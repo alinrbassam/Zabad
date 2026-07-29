@@ -1,0 +1,23 @@
+{
+  "app_title": "نظام إدارة تجارة التجزئة",
+  "dashboard": "لوحة التحكم",
+  "system_status": "حالة النظام",
+  "settings": "الإعدادات",
+  "profile": "الملف الشخصي",
+  "notifications": "الإشعارات",
+  "search_placeholder": "البحث في الوحدات والعمليات...",
+  "theme": "المظهر",
+  "language": "اللغة",
+  "light": "فاتح",
+  "dark": "داكن",
+  "system": "حسب النظام",
+  "english": "English",
+  "arabic": "العربية",
+  "save": "حفظ التغييرات",
+  "cancel": "إلغاء",
+  "confirm": "تأكيد",
+  "delete": "حذف",
+  "loading": "جاري التحميل...",
+  "empty_data": "لا توجد سجلات",
+  "error_occurred": "حدث خطأ غير متوقع"
+}

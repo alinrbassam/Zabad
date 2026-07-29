@@ -1,0 +1,23 @@
+{
+  "app_title": "Retail Management System",
+  "dashboard": "Dashboard",
+  "system_status": "System Status",
+  "settings": "Settings",
+  "profile": "User Profile",
+  "notifications": "Notifications",
+  "search_placeholder": "Search modules, actions...",
+  "theme": "Theme",
+  "language": "Language",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "english": "English",
+  "arabic": "العربية",
+  "save": "Save Changes",
+  "cancel": "Cancel",
+  "confirm": "Confirm",
+  "delete": "Delete",
+  "loading": "Loading...",
+  "empty_data": "No records found",
+  "error_occurred": "An unexpected error occurred"
+}

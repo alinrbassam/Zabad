@@ -1,0 +1,30 @@
+appId: com.rms.enterprise
+productName: RMS Enterprise Retail System
+copyright: Copyright © 2026 RMS Enterprise Software
+directories:
+  output: dist-release
+files:
+  - dist/**/*
+  - package.json
+
+win:
+  forceCodeSigning: false
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: RMS Enterprise
+  uninstallDisplayName: RMS Enterprise Retail System
+
+extraMetadata:
+  main: dist/main/index.js
+  author: RMS Enterprise Software
