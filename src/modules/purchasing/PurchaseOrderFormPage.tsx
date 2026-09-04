@@ -7,8 +7,10 @@ import { ProductEntity } from '@shared/types';
 import { Button } from '@components/ui/Button';
 import { Card } from '@components/ui/Card';
 import { Input } from '@components/ui/Input';
+import { DatePicker } from '@components/ui/DatePicker';
 import { Alert } from '@components/ui/Alert';
 import { Trash2, Plus, ShoppingCart } from 'lucide-react';
+import { formatCurrency } from '@renderer/utils/currency';
 
 interface POLineItem {
   product: ProductEntity;
@@ -37,7 +39,8 @@ export const PurchaseOrderFormPage: React.FC = () => {
 
   useEffect(() => {
     loadMetadata();
-  }, [loadMetadata]);
+    loadProducts();
+  }, [loadMetadata, loadProducts]);
 
   useEffect(() => {
     if (suppliers.length > 0 && !supplierId) {
@@ -195,52 +198,85 @@ export const PurchaseOrderFormPage: React.FC = () => {
               </select>
             </div>
 
-            <Input
+            <DatePicker
               label="Order Date *"
-              type="date"
               value={orderDate}
-              onChange={(e) => setOrderDate(e.target.value)}
+              onChange={setOrderDate}
               required
             />
-            <Input
+            <DatePicker
               label="Expected Delivery Date"
-              type="date"
               value={expectedDate}
-              onChange={(e) => setExpectedDate(e.target.value)}
+              onChange={setExpectedDate}
             />
           </div>
         </Card>
 
         <Card title="2. Add Products to Order">
           <div className="space-y-4">
-            <div className="relative">
-              <Input
-                label="Search Product (EN, AR, SKU, Barcode)"
-                value={productQuery}
-                onChange={(e) => setProductQuery(e.target.value)}
-                placeholder="Type to search product catalog..."
-              />
-              {productQuery && products.length > 0 && (
-                <div className="absolute z-20 top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Product Catalog Dropdown */}
+              <div className="flex flex-col space-y-1">
+                <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  Select Item from Product Catalog (Dropdown)
+                </label>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const selected = products.find((p) => p.id === e.target.value);
+                    if (selected) addProductToOrder(selected);
+                  }}
+                  className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 font-medium cursor-pointer"
+                >
+                  <option value="">-- Choose Existing Product from Catalog --</option>
                   {products.map((p) => (
-                    <div
-                      key={p.id}
-                      onClick={() => addProductToOrder(p)}
-                      className="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-800 flex justify-between text-xs"
-                    >
-                      <div>
-                        <span className="font-bold text-slate-900 dark:text-slate-100 block">
-                          {p.name_en}
-                        </span>
-                        <span className="text-[10px] text-slate-400">
-                          SKU: {p.sku} • Cost: ${p.purchase_cost}
-                        </span>
-                      </div>
-                      <Plus className="h-4 w-4 text-sky-600" />
-                    </div>
+                    <option key={p.id} value={p.id}>
+                      {p.name_en} {p.name_ar ? `(${p.name_ar})` : ''} - SKU: {p.sku}
+                    </option>
                   ))}
-                </div>
-              )}
+                </select>
+                <span className="text-[11px] text-slate-400">
+                  Choose directly from catalog to avoid duplicate items
+                </span>
+              </div>
+
+              {/* Quick Search */}
+              <div className="relative">
+                <Input
+                  label="Or Search Product (Name, SKU, Barcode)"
+                  value={productQuery}
+                  onChange={(e) => setProductQuery(e.target.value)}
+                  placeholder="Type to filter..."
+                />
+                {productQuery && (
+                  <div className="absolute z-20 top-full left-0 right-0 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto">
+                    {products
+                      .filter(
+                        (p) =>
+                          p.name_en.toLowerCase().includes(productQuery.toLowerCase()) ||
+                          (p.name_ar && p.name_ar.includes(productQuery)) ||
+                          p.sku.toLowerCase().includes(productQuery.toLowerCase()),
+                      )
+                      .map((p) => (
+                        <div
+                          key={p.id}
+                          onClick={() => addProductToOrder(p)}
+                          className="p-3 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer border-b border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs"
+                        >
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                              {p.name_en} {p.name_ar ? `(${p.name_ar})` : ''}
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              SKU: {p.sku} • Cost: {formatCurrency(p.purchase_cost || 0)}
+                            </span>
+                          </div>
+                          <Plus className="h-4 w-4 text-sky-600" />
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Line Items Table */}
@@ -250,7 +286,7 @@ export const PurchaseOrderFormPage: React.FC = () => {
                   <tr>
                     <th className="p-3">Product</th>
                     <th className="p-3 w-28">Ordered Qty</th>
-                    <th className="p-3 w-28">Unit Cost ($)</th>
+                    <th className="p-3 w-28">Unit Cost (FCFA)</th>
                     <th className="p-3 w-24">Tax Rate (%)</th>
                     <th className="p-3 w-28">Line Total</th>
                     <th className="p-3 w-12">Action</th>
@@ -332,20 +368,23 @@ export const PurchaseOrderFormPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-4">
               <Input
-                label="Order Overall Discount ($)"
+                label="Order Overall Discount (FCFA)"
                 type="number"
+                step="any"
                 value={orderDiscount}
                 onChange={(e) => setOrderDiscount(Number(e.target.value))}
               />
               <Input
-                label="Shipping & Freight ($)"
+                label="Shipping & Freight (FCFA)"
                 type="number"
+                step="any"
                 value={shippingCost}
                 onChange={(e) => setShippingCost(Number(e.target.value))}
               />
               <Input
-                label="Additional Handling Charges ($)"
+                label="Additional Handling Charges (FCFA)"
                 type="number"
+                step="any"
                 value={additionalCharges}
                 onChange={(e) => setAdditionalCharges(Number(e.target.value))}
               />

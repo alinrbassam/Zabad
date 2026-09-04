@@ -123,6 +123,16 @@ export const IPC_CHANNELS = {
   MAINTENANCE_DIAGNOSTICS: 'maintenance:diagnostics',
 
   UPDATER_CHECK_GITHUB: 'updater:check_github',
+
+  // Debts & Borrowing Channels
+  POS_DEBTS_LIST: 'pos:debts_list',
+  POS_SETTLE_DEBT: 'pos:settle_debt',
+
+  // Expenses Channels
+  EXPENSES_LIST: 'expenses:list',
+  EXPENSES_CREATE: 'expenses:create',
+  EXPENSES_DELETE: 'expenses:delete',
+  EXPENSES_SUMMARY: 'expenses:summary',
 } as const;
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

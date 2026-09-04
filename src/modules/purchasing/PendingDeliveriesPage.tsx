@@ -7,6 +7,7 @@ import { Button } from '@components/ui/Button';
 import { Badge } from '@components/ui/Badge';
 import { PurchaseOrderEntity } from '@shared/types';
 import { Clock, Truck } from 'lucide-react';
+import { formatDate } from '@utils/date';
 
 export const PendingDeliveriesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ export const PendingDeliveriesPage: React.FC = () => {
           <span
             className={`font-bold ${isOverdue ? 'text-rose-600' : 'text-slate-700 dark:text-slate-300'}`}
           >
-            {po.expected_delivery_date || 'Not specified'}
+            {po.expected_delivery_date ? formatDate(po.expected_delivery_date) : 'Not specified'}
           </span>
         );
       },

@@ -6,6 +6,7 @@ import { useAuthStore } from '@stores/useAuthStore';
 import { ProductEntity } from '@shared/types';
 import { Card } from '@components/ui/Card';
 import { Input } from '@components/ui/Input';
+import { DatePicker } from '@components/ui/DatePicker';
 import { Button } from '@components/ui/Button';
 import { Alert } from '@components/ui/Alert';
 import { Truck } from 'lucide-react';
@@ -151,11 +152,10 @@ export const GoodsReceivingPage: React.FC = () => {
               value={deliveryNote}
               onChange={(e) => setDeliveryNote(e.target.value)}
             />
-            <Input
+            <DatePicker
               label="Receipt Date *"
-              type="date"
               value={receiptDate}
-              onChange={(e) => setReceiptDate(e.target.value)}
+              onChange={setReceiptDate}
               required
             />
           </div>
@@ -211,6 +211,7 @@ export const GoodsReceivingPage: React.FC = () => {
                       {line.product.track_expiry === 1 ? (
                         <input
                           type="date"
+                          lang="en-GB"
                           value={line.expiryDate}
                           onChange={(e) => updateLine(idx, 'expiryDate', e.target.value)}
                           className="w-full px-2 py-1 border border-slate-300 dark:border-slate-700 rounded bg-white dark:bg-slate-800 font-medium"

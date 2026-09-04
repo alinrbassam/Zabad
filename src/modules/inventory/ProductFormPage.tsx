@@ -14,7 +14,7 @@ import { Alert } from '@components/ui/Alert';
 export const ProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { categories, brands, units, loadMetadata, createProduct, isLoading, error } =
+  const { categories, units, loadMetadata, createProduct, isLoading, error } =
     useProductStore();
   const { user } = useAuthStore();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -23,7 +23,6 @@ export const ProductFormPage: React.FC = () => {
     register,
     handleSubmit,
     setValue,
-    watch,
     formState: { errors },
   } = useForm<ProductInput>({
     resolver: zodResolver(ProductSchema),
@@ -31,7 +30,7 @@ export const ProductFormPage: React.FC = () => {
       sku: `SKU-${Math.floor(100000 + Math.random() * 900000)}`,
       nameEn: '',
       nameAr: '',
-      productType: 'Standard stock item',
+      productType: 'Weighted product',
       categoryId: '',
       baseUnitId: '',
       purchaseCost: 0,
@@ -39,12 +38,12 @@ export const ProductFormPage: React.FC = () => {
       minSellingPrice: 0,
       wholesalePrice: 0,
       taxRate: 0,
-      allowDecimalQty: false,
-      qtyPrecision: 0,
+      allowDecimalQty: true,
+      qtyPrecision: 2,
       trackInventory: true,
-      minStock: 5,
-      maxStock: 100,
-      reorderLevel: 10,
+      minStock: 0,
+      maxStock: 1000,
+      reorderLevel: 100,
       defaultReorderQty: 20,
       trackBatches: false,
       trackExpiry: false,
@@ -68,17 +67,15 @@ export const ProductFormPage: React.FC = () => {
         if (res.success && res.data) {
           const p = res.data as ProductEntity;
           setValue('sku', p.sku);
-          setValue('primaryBarcode', p.primary_barcode || '');
           setValue('nameEn', p.name_en);
-          setValue('nameAr', p.name_ar);
+          setValue('nameAr', p.name_ar || p.name_en);
           setValue('categoryId', p.category_id);
           setValue('baseUnitId', p.base_unit_id);
           setValue('purchaseCost', p.purchase_cost);
           setValue('sellingPrice', p.selling_price);
-          setValue('minSellingPrice', p.min_selling_price);
+          setValue('minSellingPrice', p.min_selling_price || 0);
           setValue('trackInventory', p.track_inventory === 1);
-          setValue('trackBatches', p.track_batches === 1);
-          setValue('trackExpiry', p.track_expiry === 1);
+          setValue('reorderLevel', p.reorder_level ?? 100);
         }
       });
     }
@@ -86,6 +83,8 @@ export const ProductFormPage: React.FC = () => {
 
   const onSubmit = async (data: ProductInput) => {
     setSuccessMsg(null);
+    // Ensure nameAr mirrors nameEn if not explicitly set
+    if (!data.nameAr) data.nameAr = data.nameEn;
     const ok = await createProduct(data, user?.id);
     if (ok) {
       setSuccessMsg('Product saved successfully!');
@@ -94,14 +93,14 @@ export const ProductFormPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
             {id ? 'Edit Product' : 'Create New Product'}
           </h1>
           <p className="text-xs text-slate-500">
-            Configure product specifications, pricing, units, and stock tracking.
+            Add a new product with simple pricing and starting inventory quantity.
           </p>
         </div>
         <Button variant="outline" onClick={() => navigate('/inventory/products')}>
@@ -112,43 +111,32 @@ export const ProductFormPage: React.FC = () => {
       {error && <Alert variant="danger">{error}</Alert>}
       {successMsg && <Alert variant="success">{successMsg}</Alert>}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Section 1: Basic Identification */}
-        <Card title="1. Product Identification">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="SKU Code *" {...register('sku')} error={errors.sku?.message} />
-            <Input
-              label="Primary Barcode"
-              {...register('primaryBarcode')}
-              error={errors.primaryBarcode?.message}
-            />
-            <Input
-              label="English Product Name *"
-              {...register('nameEn')}
-              error={errors.nameEn?.message}
-            />
-            <Input
-              label="Arabic Product Name *"
-              {...register('nameAr')}
-              error={errors.nameAr?.message}
-            />
-          </div>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Section 1: Product Name */}
+        <Card title="1. Product Details">
+          <Input
+            label="Product Name *"
+            placeholder="e.g. Fresh Salmon, Sea Bass, Jumbo Shrimp..."
+            {...register('nameEn')}
+            error={errors.nameEn?.message}
+            autoFocus
+          />
         </Card>
 
-        {/* Section 2: Classification & Units */}
-        <Card title="2. Classification & Units">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Section 2: Category & Unit */}
+        <Card title="2. Category & Unit">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col space-y-1">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Category *
               </label>
               <select
                 {...register('categoryId')}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.name_en} ({c.name_ar})
+                    {c.name_en}
                   </option>
                 ))}
               </select>
@@ -156,28 +144,11 @@ export const ProductFormPage: React.FC = () => {
 
             <div className="flex flex-col space-y-1">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Brand
-              </label>
-              <select
-                {...register('brandId')}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100"
-              >
-                <option value="">None</option>
-                {brands.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name_en}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Base Unit *
+                Base Unit (Sold By) *
               </label>
               <select
                 {...register('baseUnitId')}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100"
+                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
               >
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
@@ -189,79 +160,47 @@ export const ProductFormPage: React.FC = () => {
           </div>
         </Card>
 
-        {/* Section 3: Pricing & Tax */}
-        <Card title="3. Pricing & Costs">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Section 3: Pricing & Cost */}
+        <Card title="3. Pricing (FCFA)">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
-              label="Purchase Cost ($)"
+              label="Purchase Cost / Cost per Unit (FCFA)"
               type="number"
-              step="0.01"
+              step="any"
+              placeholder="0"
               {...register('purchaseCost', { valueAsNumber: true })}
               error={errors.purchaseCost?.message}
             />
             <Input
-              label="Selling Price ($) *"
+              label="Selling Price per Unit (FCFA) *"
               type="number"
-              step="0.01"
+              step="any"
+              placeholder="0"
               {...register('sellingPrice', { valueAsNumber: true })}
               error={errors.sellingPrice?.message}
-            />
-            <Input
-              label="Min Selling Price ($)"
-              type="number"
-              step="0.01"
-              {...register('minSellingPrice', { valueAsNumber: true })}
             />
           </div>
         </Card>
 
-        {/* Section 4: Inventory & Tracking */}
-        <Card title="4. Inventory Tracking & Opening Stock">
-          <div className="space-y-4">
-            <div className="flex space-x-6 text-xs font-medium text-slate-700 dark:text-slate-300">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  {...register('trackInventory')}
-                  className="rounded border-slate-300 text-sky-600"
-                />
-                <span>Track Stock Balance</span>
-              </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  {...register('trackBatches')}
-                  className="rounded border-slate-300 text-sky-600"
-                />
-                <span>Enable Batch Tracking</span>
-              </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  {...register('trackExpiry')}
-                  className="rounded border-slate-300 text-sky-600"
-                />
-                <span>Enable Expiry Date Tracking</span>
-              </label>
-            </div>
-
-            {!id && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 border-t border-slate-200 dark:border-slate-800">
-                <Input
-                  label="Initial Opening Stock Qty"
-                  type="number"
-                  {...register('openingStockQty', { valueAsNumber: true })}
-                />
-
-                {watch('trackBatches') && (
-                  <Input label="Opening Batch #" {...register('openingBatchNumber')} />
-                )}
-
-                {watch('trackExpiry') && (
-                  <Input label="Expiry Date" type="date" {...register('openingExpiryDate')} />
-                )}
-              </div>
-            )}
+        {/* Section 4: Initial Stock & Restock Alert */}
+        <Card title="4. Stock & Restock Alert Threshold">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Opening Stock Quantity in Store"
+              type="number"
+              step="any"
+              placeholder="0"
+              {...register('openingStockQty', { valueAsNumber: true })}
+              helperText="Current quantity available in stock right now"
+            />
+            <Input
+              label="Restock Alert Level (Default: 100)"
+              type="number"
+              step="any"
+              placeholder="100"
+              {...register('reorderLevel', { valueAsNumber: true })}
+              helperText="Turns RED when stock falls below this quantity"
+            />
           </div>
         </Card>
 
@@ -269,7 +208,7 @@ export const ProductFormPage: React.FC = () => {
           <Button type="button" variant="outline" onClick={() => navigate('/inventory/products')}>
             Cancel
           </Button>
-          <Button type="submit" isLoading={isLoading} size="lg">
+          <Button type="submit" isLoading={isLoading} size="lg" className="bg-sky-600 hover:bg-sky-500 font-bold">
             Save Product ✓
           </Button>
         </div>
@@ -277,3 +216,4 @@ export const ProductFormPage: React.FC = () => {
     </div>
   );
 };
+

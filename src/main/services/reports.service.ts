@@ -214,8 +214,21 @@ export class ReportsService {
     const cogsRes = cogsStmt.get(startDate, endDate) as { cogs: number };
     const cogs = cogsRes.cogs || 0;
 
+    let totalExpenses = 0;
+    try {
+      const expStmt = this.db.prepare(`
+        SELECT COALESCE(SUM(amount), 0) as totalExpenses
+        FROM expenses
+        WHERE date(expense_date) BETWEEN ? AND ?
+      `);
+      const expRes = expStmt.get(startDate, endDate) as { totalExpenses: number };
+      totalExpenses = expRes?.totalExpenses || 0;
+    } catch {
+      totalExpenses = 0;
+    }
+
     const grossProfit = Math.round((salesRes.totalRevenue - cogs) * 100) / 100;
-    const expenses = 0; // Operating expenses placeholder
+    const expenses = Math.round(totalExpenses * 100) / 100;
     const netProfit = Math.round((grossProfit - expenses) * 100) / 100;
     const profitMarginPercent =
       salesRes.totalRevenue > 0 ? Math.round((netProfit / salesRes.totalRevenue) * 10000) / 100 : 0;

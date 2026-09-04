@@ -8,6 +8,7 @@ import { Badge } from '@components/ui/Badge';
 import { SearchBox } from '@components/ui/SearchBox';
 import { PurchaseOrderEntity } from '@shared/types';
 import { Plus, Eye, Truck } from 'lucide-react';
+import { formatDate } from '@utils/date';
 
 export const PurchaseOrdersPage: React.FC = () => {
   const navigate = useNavigate();
@@ -27,7 +28,7 @@ export const PurchaseOrdersPage: React.FC = () => {
         <div>
           <span className="font-bold text-sky-600 dark:text-sky-400 block">{po.po_number}</span>
           <span className="text-[10px] text-slate-400">
-            {new Date(po.order_date).toLocaleDateString()}
+            {formatDate(po.order_date)}
           </span>
         </div>
       ),

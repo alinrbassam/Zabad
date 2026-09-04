@@ -7,6 +7,7 @@ import { Alert } from '@components/ui/Alert';
 import { Table, Column } from '@components/ui/Table';
 import { Badge } from '@components/ui/Badge';
 import { HardDrive, Cloud } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
 
 export const BackupSettings: React.FC = () => {
   const { backups, loadBackups, createFullBackup, createAutoBackup, isLoading, error } =
@@ -63,7 +64,7 @@ export const BackupSettings: React.FC = () => {
     {
       key: 'createdAt',
       header: 'Timestamp',
-      render: (r) => <span>{new Date(String(r.createdAt)).toLocaleString()}</span>,
+      render: (r) => <span>{formatDateTime(String(r.createdAt))}</span>,
     },
   ];
 

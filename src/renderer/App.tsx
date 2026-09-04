@@ -11,12 +11,15 @@ import { InventoryModule } from '../modules/inventory';
 import { PurchasingModule } from '../modules/purchasing';
 import { POSModule } from '../modules/pos';
 import { ReportsModule } from '../modules/reports';
+import { ExpensesModule } from '../modules/expenses';
 import { HelpModule } from '../modules/help';
 import { NavigationLayout } from './components/layout/NavigationLayout';
 import { useAuthStore } from './stores/useAuthStore';
 import { useConfigStore } from './stores/useConfigStore';
 import { useThemeStore } from './stores/useThemeStore';
 import { RouteDefinition } from '@shared/types/module';
+
+import { DashboardPage } from './pages/DashboardPage';
 
 // Register core modules
 try {
@@ -29,6 +32,7 @@ try {
   moduleRegistry.registerModule(InventoryModule);
   moduleRegistry.registerModule(PurchasingModule);
   moduleRegistry.registerModule(POSModule);
+  moduleRegistry.registerModule(ExpensesModule);
   moduleRegistry.registerModule(ReportsModule);
   moduleRegistry.registerModule(HelpModule);
 } catch {
@@ -36,13 +40,38 @@ try {
 }
 
 export const App: React.FC = () => {
-  const { isAuthenticated, isScreenLocked, checkSession } = useAuthStore();
+  const { isAuthenticated, isScreenLocked, checkSession, activeRoleMode } = useAuthStore();
   const { loadConfig } = useConfigStore();
   const { theme } = useThemeStore();
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadConfig();
+
+    if (import.meta.env.DEV) {
+      setIsSetupComplete(true);
+      useAuthStore.setState({
+        isAuthenticated: true,
+        isScreenLocked: false,
+        user: {
+          id: 'dev-admin-id',
+          username: 'admin',
+          full_name: 'Store Manager',
+          email: 'admin@ghazal.com',
+          role_id: 'admin',
+          password_hash: '',
+          salt: '',
+          is_active: 1,
+          must_change_password: 0,
+          failed_login_attempts: 0,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        permissions: ['*'],
+      });
+      return;
+    }
+
     checkSession();
 
     if (window.api?.checkSetup) {
@@ -75,7 +104,7 @@ export const App: React.FC = () => {
       <div className="flex h-screen items-center justify-center bg-slate-900 text-white font-sans">
         <div className="flex flex-col items-center space-y-4">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-sky-500 border-t-transparent" />
-          <p className="text-sm font-semibold tracking-wide">Initializing Retail System...</p>
+          <p className="text-sm font-semibold tracking-wide">Initializing Zabad System...</p>
         </div>
       </div>
     );
@@ -94,11 +123,14 @@ export const App: React.FC = () => {
       ) : (
         <NavigationLayout>
           <Routes>
-            <Route path="/" element={<Navigate to="/pos" replace />} />
+            <Route
+              path="/"
+              element={activeRoleMode === 'cashier' ? <Navigate to="/pos" replace /> : <DashboardPage />}
+            />
             {allRoutes.map((r: RouteDefinition) => (
               <Route key={r.path} path={r.path} element={<r.component />} />
             ))}
-            <Route path="*" element={<Navigate to="/pos" replace />} />
+            <Route path="*" element={<Navigate to={activeRoleMode === 'cashier' ? '/pos' : '/'} replace />} />
           </Routes>
         </NavigationLayout>
       )}

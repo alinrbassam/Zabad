@@ -198,6 +198,8 @@ export interface ProductEntity extends BaseEntity {
   preferred_receipt_name?: string;
   is_active: number;
   is_featured: number;
+  quantity_on_hand?: number;
+  unit_symbol?: string;
   created_by?: string;
   updated_by?: string;
   archived_at?: string | null;
@@ -230,6 +232,9 @@ export interface InventoryMovementEntity {
   notes?: string;
   user_id?: string;
   created_at: string;
+  product_name?: string;
+  sku?: string;
+  unit_symbol?: string;
 }
 
 export interface BatchEntity {
@@ -371,6 +376,10 @@ export interface SalesOrderEntity {
   id: string;
   invoice_number: string;
   customer_id?: string;
+  customer_name?: string;
+  customer_phone?: string;
+  due_date?: string;
+  notes?: string;
   subtotal: number;
   item_discount: number;
   order_discount: number;
@@ -378,10 +387,33 @@ export interface SalesOrderEntity {
   grand_total: number;
   paid_amount: number;
   change_amount: number;
-  payment_status: 'Paid' | 'Partially paid' | 'Refunded' | 'Voided';
-  payment_method: 'Cash' | 'Card' | 'Split' | 'Other';
+  payment_status: 'Paid' | 'Partially paid' | 'Unpaid' | 'Refunded' | 'Voided' | string;
+  payment_method: 'Cash' | 'Card' | 'Split' | 'Borrow' | 'Credit' | 'Digital Wallet' | 'Store Credit' | string;
   shift_id?: string;
   cashier_id?: string;
+  created_at: string;
+}
+
+export type ExpenseCategory =
+  | 'Electricity'
+  | 'Water'
+  | 'Ice & Cooling'
+  | 'Rent'
+  | 'Salaries'
+  | 'Transport'
+  | 'Maintenance'
+  | 'Other';
+
+export interface ExpenseEntity {
+  id: string;
+  category: ExpenseCategory | string;
+  title: string;
+  amount: number;
+  payment_method: string;
+  expense_date: string;
+  receipt_reference?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
   created_at: string;
 }
 

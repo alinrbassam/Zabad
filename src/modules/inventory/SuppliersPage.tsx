@@ -11,7 +11,6 @@ import { Truck, Plus } from 'lucide-react';
 export const SuppliersPage: React.FC = () => {
   const { suppliers, loadMetadata } = useProductStore();
   const [isOpen, setIsOpen] = useState(false);
-  const [code, setCode] = useState(`SUP-${Math.floor(1000 + Math.random() * 9000)}`);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [contact, setContact] = useState('');
@@ -24,7 +23,7 @@ export const SuppliersPage: React.FC = () => {
     e.preventDefault();
     if (window.api?.createSupplier) {
       await window.api.createSupplier({
-        code,
+        code: `SUP-${Math.floor(1000 + Math.random() * 9000)}`,
         name,
         phone,
         contactPerson: contact,
@@ -93,28 +92,32 @@ export const SuppliersPage: React.FC = () => {
       <Dialog isOpen={isOpen} title="Create Supplier Profile" onClose={() => setIsOpen(false)}>
         <form onSubmit={handleCreate} className="space-y-4">
           <Input
-            label="Supplier Code *"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            required
-          />
-          <Input
-            label="Supplier Business Name *"
+            label="Supplier / Fisherman Name *"
+            placeholder="e.g. Harbor Fisherman Abu Ahmad, Coastal Fresh Fish Co..."
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
+            autoFocus
           />
           <Input
-            label="Contact Person"
+            label="Phone Number"
+            placeholder="e.g. +961 70 123456"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+          <Input
+            label="Contact Person (Optional)"
+            placeholder="e.g. Abu Ahmad"
             value={contact}
             onChange={(e) => setContact(e.target.value)}
           />
-          <Input label="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <div className="pt-2 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit">Save Supplier</Button>
+            <Button type="submit" className="bg-sky-600 hover:bg-sky-500 font-bold">
+              Save Supplier ✓
+            </Button>
           </div>
         </form>
       </Dialog>

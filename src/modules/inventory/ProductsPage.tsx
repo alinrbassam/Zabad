@@ -9,6 +9,7 @@ import { Card } from '@components/ui/Card';
 import { ProductEntity } from '@shared/types';
 import { Plus, Package, Archive, Edit } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { formatCurrency } from '@renderer/utils/currency';
 
 export const ProductsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -28,32 +29,66 @@ export const ProductsPage: React.FC = () => {
   const columns: Column<ProductEntity>[] = [
     {
       key: 'name_en',
-      header: 'Product Details',
+      header: 'Product Name',
       render: (p) => (
         <div>
           <span className="font-bold text-slate-900 dark:text-slate-100 block">{p.name_en}</span>
-          <span className="text-[10px] text-slate-500">
-            {p.name_ar} • SKU: {p.sku}
-          </span>
+          <div className="flex items-center space-x-2 text-[11px] text-slate-400">
+            {p.name_ar && <span>{p.name_ar}</span>}
+            {p.name_ar && <span>•</span>}
+            <span className="font-mono">SKU: {p.sku}</span>
+          </div>
         </div>
       ),
     },
     {
-      key: 'primary_barcode',
-      header: 'Barcode',
-      render: (p) =>
-        p.primary_barcode ? (
-          <span className="font-mono text-xs">{p.primary_barcode}</span>
-        ) : (
-          <span className="text-slate-400">—</span>
-        ),
+      key: 'quantity_on_hand' as keyof ProductEntity,
+      header: 'Stock On Hand',
+      render: (p: ProductEntity) => {
+        const qty = p.quantity_on_hand ?? 0;
+        const threshold =
+          p.reorder_level && p.reorder_level > 0
+            ? p.reorder_level
+            : p.min_stock && p.min_stock > 0
+              ? p.min_stock
+              : 100;
+        const isZero = qty <= 0;
+        const isLow = qty < threshold;
+        const unit = p.unit_symbol || '';
+
+        return (
+          <div className="flex flex-col space-y-0.5">
+            <div className="flex items-center space-x-1 font-bold">
+              <span
+                className={`text-sm ${
+                  isZero || isLow
+                    ? 'text-rose-600 dark:text-rose-400 font-black'
+                    : 'text-slate-900 dark:text-slate-100 font-bold'
+                }`}
+              >
+                {qty}
+              </span>
+              {unit && <span className="text-xs text-slate-400 font-normal">{unit}</span>}
+            </div>
+            {isZero ? (
+              <span className="inline-flex items-center text-[10px] font-bold text-rose-700 bg-rose-100 dark:bg-rose-950/60 dark:text-rose-300 px-1.5 py-0.5 rounded w-fit">
+                Out of Stock
+              </span>
+            ) : isLow ? (
+              <span className="inline-flex items-center text-[10px] font-semibold text-rose-600 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400 px-1.5 py-0.5 rounded w-fit">
+                ⚠️ Restock (&lt; {threshold})
+              </span>
+            ) : null}
+          </div>
+        );
+      },
     },
     {
       key: 'selling_price',
-      header: 'Selling Price',
+      header: 'Selling Price (FCFA)',
       render: (p) => (
-        <span className="font-bold text-slate-800 dark:text-slate-200">
-          ${p.selling_price.toFixed(2)}
+        <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
+          {formatCurrency(p.selling_price)}
         </span>
       ),
     },
@@ -61,10 +96,10 @@ export const ProductsPage: React.FC = () => {
       ? [
           {
             key: 'purchase_cost' as keyof ProductEntity,
-            header: 'Purchase Cost',
+            header: 'Purchase Cost (FCFA)',
             render: (p: ProductEntity) => (
               <span className="text-slate-500 font-mono text-xs">
-                ${p.purchase_cost.toFixed(2)}
+                {formatCurrency(p.purchase_cost)}
               </span>
             ),
           },
@@ -141,7 +176,7 @@ export const ProductsPage: React.FC = () => {
           <SearchBox
             value={search}
             onChange={setSearch}
-            placeholder="Search by name, SKU, or barcode..."
+            placeholder="Search products by name..."
           />
         </div>
 

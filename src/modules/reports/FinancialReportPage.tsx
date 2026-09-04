@@ -5,6 +5,7 @@ import { Card } from '@components/ui/Card';
 import { Input } from '@components/ui/Input';
 import { Alert } from '@components/ui/Alert';
 import { Layers, ShieldAlert } from 'lucide-react';
+import { formatCurrency } from '../../renderer/utils/currency';
 
 export const FinancialReportPage: React.FC = () => {
   const { startDate, endDate, setDateRange, financialMetrics, loadFinancialReport, error } =
@@ -68,11 +69,8 @@ export const FinancialReportPage: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-l-4 border-l-sky-500 space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400">Total Revenue</span>
-          <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100">
-            $
-            {(financialMetrics?.revenue || 0).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            })}
+          <h3 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-mono">
+            {formatCurrency(financialMetrics?.revenue || 0)}
           </h3>
         </Card>
 
@@ -80,18 +78,15 @@ export const FinancialReportPage: React.FC = () => {
           <span className="text-[10px] uppercase font-bold text-slate-400">
             Cost of Goods Sold (COGS)
           </span>
-          <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400">
-            ${(financialMetrics?.cogs || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+          <h3 className="text-2xl font-black text-amber-600 dark:text-amber-400 font-mono">
+            {formatCurrency(financialMetrics?.cogs || 0)}
           </h3>
         </Card>
 
         <Card className="border-l-4 border-l-emerald-500 space-y-1">
           <span className="text-[10px] uppercase font-bold text-slate-400">Net Profit</span>
-          <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
-            $
-            {(financialMetrics?.netProfit || 0).toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-            })}
+          <h3 className="text-2xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+            {formatCurrency(financialMetrics?.netProfit || 0)}
           </h3>
           <span className="text-[10px] text-slate-500">
             Margin: {financialMetrics?.profitMarginPercent || 0}%
@@ -105,31 +100,31 @@ export const FinancialReportPage: React.FC = () => {
             <span className="font-semibold text-slate-700 dark:text-slate-300">
               Gross Sales Revenue:
             </span>
-            <span className="font-bold">${financialMetrics?.revenue?.toFixed(2)}</span>
+            <span className="font-bold font-mono">{formatCurrency(financialMetrics?.revenue || 0)}</span>
           </div>
 
           <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-800">
             <span className="font-semibold text-slate-700 dark:text-slate-300">
               Less: Cost of Goods Sold (COGS):
             </span>
-            <span className="font-bold text-rose-500">-${financialMetrics?.cogs?.toFixed(2)}</span>
+            <span className="font-bold text-rose-500 font-mono">-{formatCurrency(financialMetrics?.cogs || 0)}</span>
           </div>
 
           <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-2 rounded font-bold text-emerald-600">
             <span>Gross Profit:</span>
-            <span>${financialMetrics?.grossProfit?.toFixed(2)}</span>
+            <span className="font-mono">{formatCurrency(financialMetrics?.grossProfit || 0)}</span>
           </div>
 
           <div className="flex justify-between py-2 border-b border-slate-200 dark:border-slate-800">
             <span className="font-semibold text-slate-700 dark:text-slate-300">
-              Less: Operating Expenses:
+              Less: Operating Expenses (Electricity, Water, Ice, etc.):
             </span>
-            <span className="font-bold">-${financialMetrics?.expenses?.toFixed(2)}</span>
+            <span className="font-bold text-rose-500 font-mono">-{formatCurrency(financialMetrics?.expenses || 0)}</span>
           </div>
 
           <div className="flex justify-between py-3 border-t-2 border-slate-900 dark:border-slate-100 text-base font-black text-emerald-600">
             <span>Net Operating Profit:</span>
-            <span>${financialMetrics?.netProfit?.toFixed(2)}</span>
+            <span className="font-mono">{formatCurrency(financialMetrics?.netProfit || 0)}</span>
           </div>
         </div>
       </Card>

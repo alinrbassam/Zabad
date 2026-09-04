@@ -6,6 +6,7 @@ import { SearchBox } from '@components/ui/SearchBox';
 import { Badge } from '@components/ui/Badge';
 import { PurchaseOrderEntity } from '@shared/types';
 import { History } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
 
 export const PurchasingHistoryPage: React.FC = () => {
   const { orders, loadOrders } = usePurchasingStore();
@@ -23,7 +24,7 @@ export const PurchasingHistoryPage: React.FC = () => {
         <div>
           <span className="font-bold text-sky-600 block">{po.po_number}</span>
           <span className="text-[10px] text-slate-400">
-            {new Date(po.created_at).toLocaleString()}
+            {formatDateTime(po.created_at)}
           </span>
         </div>
       ),

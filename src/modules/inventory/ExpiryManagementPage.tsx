@@ -6,6 +6,7 @@ import { Badge } from '@components/ui/Badge';
 import { Button } from '@components/ui/Button';
 import { BatchEntity } from '@shared/types';
 import { Calendar, AlertCircle } from 'lucide-react';
+import { formatDate } from '@utils/date';
 
 export const ExpiryManagementPage: React.FC = () => {
   const { expiringBatches, loadExpiringBatches, createAdjustment } = useInventoryStore();
@@ -45,7 +46,7 @@ export const ExpiryManagementPage: React.FC = () => {
       header: 'Expiry Date',
       render: (b) => (
         <span className="font-mono text-xs text-rose-500 font-bold">
-          {b.expiry_date ? new Date(b.expiry_date).toLocaleDateString() : '—'}
+          {formatDate(b.expiry_date)}
         </span>
       ),
     },

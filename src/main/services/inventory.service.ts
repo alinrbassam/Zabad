@@ -35,16 +35,33 @@ export class InventoryService {
     const product = this.productRepo.findById(input.productId);
     if (!product) throw new Error('Product not found');
 
+    const deductionTypes = [
+      'Manual deduction',
+      'Damaged stock',
+      'Expired stock',
+      'Lost stock',
+      'Future purchase return',
+    ];
+
+    const additionTypes = ['Manual addition', 'Future purchase receipt'];
+
+    let delta = input.quantityChange;
+    if (deductionTypes.includes(input.movementType)) {
+      delta = -Math.abs(input.quantityChange);
+    } else if (additionTypes.includes(input.movementType)) {
+      delta = Math.abs(input.quantityChange);
+    }
+
     logger.info(
       'InventoryService',
-      `Executing stock adjustment: ${input.movementType} (${input.quantityChange}) for ${product.name_en}`,
+      `Executing stock adjustment: ${input.movementType} (${delta}) for ${product.name_en}`,
     );
 
     const movement = this.inventoryRepo.recordStockMovement({
       productId: input.productId,
       batchId: input.batchId,
       movementType: input.movementType,
-      quantityChange: input.quantityChange,
+      quantityChange: delta,
       unitId: product.base_unit_id,
       costAtTime: input.unitCost || product.purchase_cost,
       reason: input.reason,
@@ -56,7 +73,7 @@ export class InventoryService {
       user_id: userId,
       action: 'STOCK_ADJUSTMENT',
       module: 'Inventory',
-      details: `${input.movementType} of ${input.quantityChange} for product ${product.name_en} (${product.sku}). Reason: ${input.reason}`,
+      details: `${input.movementType} of ${delta} for product ${product.name_en} (${product.sku}). Reason: ${input.reason}`,
     });
 
     return movement;
@@ -69,8 +86,11 @@ export class InventoryService {
         COALESCE(SUM(b.quantity_on_hand), 0) as totalStockQty,
         COALESCE(SUM(b.quantity_on_hand * p.purchase_cost), 0) as totalCostValue,
         COALESCE(SUM(b.quantity_on_hand * p.selling_price), 0) as totalSellingValue,
-        SUM(CASE WHEN b.quantity_on_hand <= p.reorder_level AND b.quantity_on_hand > 0 THEN 1 ELSE 0 END) as lowStockCount,
-        SUM(CASE WHEN b.quantity_on_hand <= 0 THEN 1 ELSE 0 END) as outOfStockCount
+        SUM(CASE 
+          WHEN COALESCE(b.quantity_on_hand, 0) > 0 
+           AND COALESCE(b.quantity_on_hand, 0) < (CASE WHEN p.reorder_level IS NOT NULL AND p.reorder_level > 0 THEN p.reorder_level ELSE 100 END) 
+          THEN 1 ELSE 0 END) as lowStockCount,
+        SUM(CASE WHEN COALESCE(b.quantity_on_hand, 0) <= 0 THEN 1 ELSE 0 END) as outOfStockCount
       FROM products p
       LEFT JOIN inventory_balances b ON p.id = b.product_id
       WHERE (p.deleted_at IS NULL OR p.deleted_at = '') AND p.is_active = 1

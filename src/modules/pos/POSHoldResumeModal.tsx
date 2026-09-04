@@ -3,6 +3,8 @@ import { usePOSStore } from '@stores/usePOSStore';
 import { Button } from '@components/ui/Button';
 import { Card } from '@components/ui/Card';
 import { Clock, Play } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
+import { formatCurrency } from '../../renderer/utils/currency';
 
 interface Props {
   isOpen: boolean;
@@ -47,8 +49,7 @@ export const POSHoldResumeModal: React.FC<Props> = ({ isOpen, onClose, onSelect 
                   {sale.reference_name}
                 </span>
                 <span className="text-[10px] text-slate-400">
-                  {new Date(sale.created_at).toLocaleTimeString()} • Total: $
-                  {sale.grand_total.toFixed(2)}
+                  {formatDateTime(sale.created_at)} • Total: {formatCurrency(sale.grand_total)}
                 </span>
                 {sale.notes && (
                   <p className="text-[10px] text-slate-500 italic mt-0.5">{sale.notes}</p>

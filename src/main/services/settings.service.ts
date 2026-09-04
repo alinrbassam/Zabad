@@ -30,10 +30,10 @@ export class SettingsService {
         address: biz.address || '',
         city: biz.city || '',
         country: biz.country || '',
-        currency: biz.currency,
+        currency: biz.currency === 'USD' ? 'FCFA' : (biz.currency || 'FCFA'),
         timezone: biz.timezone,
-        dateFormat: biz.date_format,
-        timeFormat: biz.time_format,
+        dateFormat: biz.date_format === 'YYYY-MM-DD' ? 'DD-MM-YYYY' : (biz.date_format || 'DD-MM-YYYY'),
+        timeFormat: biz.time_format || '24h',
       };
     }
 

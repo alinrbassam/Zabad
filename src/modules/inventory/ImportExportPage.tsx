@@ -4,6 +4,7 @@ import { Button } from '@components/ui/Button';
 import { Alert } from '@components/ui/Alert';
 import { useAuthStore } from '@stores/useAuthStore';
 import { FileSpreadsheet, Download, Upload, CheckCircle2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface ImportResult {
   total: number;
@@ -14,32 +15,40 @@ interface ImportResult {
 
 export const ImportExportPage: React.FC = () => {
   const { user } = useAuthStore();
-  const [fileText, setFileText] = useState('');
+  const [fileName, setFileName] = useState('');
+  const [parsedRows, setParsedRows] = useState<any[]>([]);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const sampleCsvTemplate = `SKU,Primary Barcode,English Name,Arabic Name,Category Name,Base Unit Code,Purchase Cost,Selling Price,Opening Stock
-SKU-9901,6291001001,Fresh Milk 1L,حليب طازج 1 لتر,Dairy,pcs,1.20,2.00,50
-SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
-
   const handleDownloadTemplate = () => {
-    const blob = new Blob([sampleCsvTemplate], { type: 'text/csv' });
+    const headers = [
+      'SKU',
+      'Primary Barcode',
+      'English Name',
+      'Arabic Name',
+      'Category Name',
+      'Base Unit Code',
+      'Purchase Cost',
+      'Selling Price',
+      'Opening Stock'
+    ];
+    const data = [
+      headers,
+      ['SKU-9901', '6291001001', 'Fresh Milk 1L', 'حليب طازج 1 لتر', 'Dairy', 'pcs', 1.20, 2.00, 50],
+      ['SKU-9902', '6291001002', 'White Bread', 'خبز أبيض', 'Bakery', 'pcs', 0.80, 1.50, 30]
+    ];
+    
+    const worksheet = XLSX.utils.aoa_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+    
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'product_import_template.csv';
+    a.download = 'product_import_template.xlsx';
     a.click();
-  };
-
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (evt) => {
-        setFileText(evt.target?.result as string);
-      };
-      reader.readAsText(file);
-    }
   };
 
   const parseCsvToRows = (csv: string) => {
@@ -69,19 +78,99 @@ SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
     return rows;
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      const isXlsx = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
+      const reader = new FileReader();
+
+      reader.onload = (evt) => {
+        try {
+          let rows: any[] = [];
+          if (isXlsx) {
+            const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+
+            if (jsonData.length > 1) {
+              const headers = jsonData[0].map((h: any) => String(h || '').trim().toLowerCase());
+              
+              const findIndex = (aliases: string[]) => {
+                return headers.findIndex((h: string) => aliases.some(alias => h.includes(alias)));
+              };
+
+              const idxSku = findIndex(['sku']);
+              const idxBarcode = findIndex(['barcode', 'upc']);
+              const idxNameEn = findIndex(['english name', 'name (en)', 'name_en', 'name en', 'english', 'product name']);
+              const idxNameAr = findIndex(['arabic name', 'name (ar)', 'name_ar', 'name ar', 'arabic']);
+              const idxCategory = findIndex(['category id', 'category name', 'category']);
+              const idxUnit = findIndex(['base unit id', 'base unit code', 'unit', 'base unit']);
+              const idxPurchase = findIndex(['purchase cost', 'purchase', 'purchase price', 'cost']);
+              const idxSelling = findIndex(['selling price', 'price', 'selling']);
+              const idxStock = findIndex(['opening stock', 'stock', 'qty', 'quantity']);
+
+              for (let i = 1; i < jsonData.length; i++) {
+                const r = jsonData[i];
+                if (r && r.length > 0) {
+                  const sku = idxSku !== -1 ? String(r[idxSku] || '').trim() : '';
+                  const primaryBarcode = idxBarcode !== -1 ? String(r[idxBarcode] || '').trim() : undefined;
+                  const nameEn = idxNameEn !== -1 ? String(r[idxNameEn] || '').trim() : '';
+                  const nameAr = idxNameAr !== -1 ? String(r[idxNameAr] || '').trim() : '';
+                  const categoryNameEn = idxCategory !== -1 ? String(r[idxCategory] || '').trim() : 'General';
+                  const baseUnitCode = idxUnit !== -1 ? String(r[idxUnit] || '').trim() : 'pcs';
+                  const purchaseCost = idxPurchase !== -1 ? Number(r[idxPurchase]) || 0 : 0;
+                  const sellingPrice = idxSelling !== -1 ? Number(r[idxSelling]) || 0 : 0;
+                  const openingStockQty = idxStock !== -1 ? Number(r[idxStock]) || 0 : 0;
+
+                  if (sku && nameEn && nameAr) {
+                    rows.push({
+                      sku,
+                      primaryBarcode,
+                      nameEn,
+                      nameAr,
+                      categoryNameEn,
+                      baseUnitCode,
+                      purchaseCost,
+                      sellingPrice,
+                      openingStockQty,
+                    });
+                  }
+                }
+              }
+            }
+          } else {
+            const csv = evt.target?.result as string;
+            rows = parseCsvToRows(csv);
+          }
+
+          setParsedRows(rows);
+        } catch (err) {
+          alert('Error parsing spreadsheet file: ' + (err as Error).message);
+        }
+      };
+
+      if (isXlsx) {
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.readAsText(file);
+      }
+    }
+  };
+
   const handleRunImport = async () => {
     setIsLoading(true);
     setImportResult(null);
     try {
-      const rows = parseCsvToRows(fileText);
-      if (rows.length === 0) {
-        alert('No valid product rows parsed from CSV content.');
+      if (parsedRows.length === 0) {
+        alert('No valid product rows parsed from spreadsheet.');
         setIsLoading(false);
         return;
       }
 
       if (window.api?.importProducts) {
-        const res = await window.api.importProducts(rows, user?.id);
+        const res = await window.api.importProducts(parsedRows, user?.id);
         if (res.success && res.data) {
           setImportResult(res.data as ImportResult);
         }
@@ -97,11 +186,13 @@ SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
     if (window.api?.exportProducts) {
       const res = await window.api.exportProducts('', true);
       if (res.success && res.data) {
-        const blob = new Blob([res.data], { type: 'text/csv' });
+        const workbook = XLSX.read(res.data, { type: 'string', raw: true });
+        const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `inventory_export_${new Date().toISOString().slice(0, 10)}.csv`;
+        a.download = `inventory_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
         a.click();
       }
     }
@@ -116,14 +207,14 @@ SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
             Product Import & Export
           </h1>
           <p className="text-xs text-slate-500">
-            Bulk CSV/Excel product catalog onboarding, data validation, and snapshot data exporter.
+            Bulk Excel or CSV product catalog onboarding, data validation, and snapshot data exporter.
           </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Import Panel */}
-        <Card title="Bulk Product Import (CSV/Excel)">
+        <Card title="Bulk Product Import (Excel/CSV)">
           <div className="space-y-4">
             <Button
               variant="outline"
@@ -132,21 +223,21 @@ SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
               className="w-full flex items-center justify-center space-x-2"
             >
               <Download className="h-4 w-4" />
-              <span>Download Import Template CSV</span>
+              <span>Download Excel (.xlsx) Template</span>
             </Button>
 
             <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 p-4 rounded-xl text-center space-y-2">
               <Upload className="h-6 w-6 mx-auto text-slate-400" />
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 block">
-                Select CSV File
+                Select Excel or CSV File
               </span>
-              <input type="file" accept=".csv" onChange={handleFileUpload} className="text-xs" />
+              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="text-xs" />
             </div>
 
-            {fileText && (
+            {fileName && (
               <div className="space-y-2">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Parsed {parseCsvToRows(fileText).length} rows ready for import
+                  Parsed {parsedRows.length} rows ready for import
                 </span>
                 <Button onClick={handleRunImport} isLoading={isLoading} className="w-full">
                   Run Product Import Transaction →
@@ -182,7 +273,7 @@ SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
           <div className="space-y-4 text-xs">
             <p className="text-slate-500">
               Export complete product catalog including prices, barcodes, categories, and stock
-              levels to standard CSV spreadsheet format.
+              levels to standard Excel (.xlsx) format.
             </p>
 
             <Alert variant="info">
@@ -196,7 +287,7 @@ SKU-9902,6291001002,White Bread,خبز أبيض,Bakery,pcs,0.80,1.50,30`;
               className="w-full flex items-center justify-center space-x-2"
             >
               <Download className="h-4 w-4" />
-              <span>Export Product Catalog CSV</span>
+              <span>Export Product Catalog Excel (.xlsx)</span>
             </Button>
           </div>
         </Card>

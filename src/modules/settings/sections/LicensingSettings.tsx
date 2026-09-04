@@ -6,6 +6,7 @@ import { Badge } from '@components/ui/Badge';
 import { Input } from '@components/ui/Input';
 import { Alert } from '@components/ui/Alert';
 import { ShieldCheck, Key, Copy, Check } from 'lucide-react';
+import { formatDate } from '@utils/date';
 
 export const LicensingSettings: React.FC = () => {
   const { deviceId, license, loadDeviceId, loadActiveLicense, activateLicense, isLoading, error } =
@@ -90,13 +91,13 @@ export const LicensingSettings: React.FC = () => {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Issue Date:</span>
-              <span>{new Date(license.issueDate).toLocaleDateString()}</span>
+              <span>{formatDate(license.issueDate)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Expiration Date:</span>
               <span>
                 {license.expirationDate
-                  ? new Date(license.expirationDate).toLocaleDateString()
+                  ? formatDate(license.expirationDate)
                   : 'Never (Lifetime)'}
               </span>
             </div>

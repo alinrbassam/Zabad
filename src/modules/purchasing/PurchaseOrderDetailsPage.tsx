@@ -5,6 +5,7 @@ import { Card } from '@components/ui/Card';
 import { Button } from '@components/ui/Button';
 import { Badge } from '@components/ui/Badge';
 import { Printer, ArrowLeft, Truck, CheckCircle2 } from 'lucide-react';
+import { formatDate } from '@utils/date';
 
 export const PurchaseOrderDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -74,7 +75,7 @@ export const PurchaseOrderDetailsPage: React.FC = () => {
               {selectedOrder.po_number}
             </span>
             <span className="text-xs text-slate-500">
-              Date: {new Date(selectedOrder.order_date).toLocaleDateString()}
+              Date: {formatDate(selectedOrder.order_date)}
             </span>
           </div>
 
@@ -96,7 +97,7 @@ export const PurchaseOrderDetailsPage: React.FC = () => {
           <div>
             <span className="font-bold uppercase text-slate-400 block mb-1">Delivery Info</span>
             <p className="text-slate-600 dark:text-slate-400">
-              Expected Delivery: {selectedOrder.expected_delivery_date || 'N/A'}
+              Expected Delivery: {selectedOrder.expected_delivery_date ? formatDate(selectedOrder.expected_delivery_date) : 'N/A'}
             </p>
           </div>
         </div>
@@ -109,9 +110,9 @@ export const PurchaseOrderDetailsPage: React.FC = () => {
                 <th className="p-3">Product ID</th>
                 <th className="p-3 text-right">Ordered Qty</th>
                 <th className="p-3 text-right">Received Qty</th>
-                <th className="p-3 text-right">Unit Cost ($)</th>
-                <th className="p-3 text-right">Tax ($)</th>
-                <th className="p-3 text-right">Line Total ($)</th>
+                <th className="p-3 text-right">Unit Cost (FCFA)</th>
+                <th className="p-3 text-right">Tax (FCFA)</th>
+                <th className="p-3 text-right">Line Total (FCFA)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

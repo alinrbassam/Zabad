@@ -5,6 +5,7 @@ import { Badge } from '@components/ui/Badge';
 import { SearchBox } from '@components/ui/SearchBox';
 import { AuditLogEntity } from '@shared/types';
 import { ShieldCheck } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
 
 export const AuditLogPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLogEntity[]>([]);
@@ -36,7 +37,7 @@ export const AuditLogPage: React.FC = () => {
       header: 'Timestamp',
       render: (l) => (
         <span className="text-slate-500 font-mono text-[11px]">
-          {new Date(l.timestamp).toLocaleString()}
+          {formatDateTime(l.timestamp)}
         </span>
       ),
     },

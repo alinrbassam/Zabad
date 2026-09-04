@@ -1,4 +1,4 @@
-import { BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, shell } from 'electron';
 import path from 'path';
 import { logger } from './services/logger.service';
 
@@ -10,6 +10,7 @@ export function createMainWindow(): BrowserWindow {
   logger.info('MainWindow', `Preload path exists: ${fs.existsSync(preloadPath)}`);
 
   const mainWindow = new BrowserWindow({
+    title: 'نظام زَبَد - Zabad POS',
     width: 1280,
     height: 800,
     minWidth: 1024,
@@ -35,9 +36,13 @@ export function createMainWindow(): BrowserWindow {
     return { action: 'deny' };
   });
 
-  if (process.env.NODE_ENV === 'development' || process.env.VITE_DEV_SERVER_URL) {
-    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:5173';
-    mainWindow.loadURL(devUrl);
+  const isDev = !app.isPackaged || process.env.NODE_ENV === 'development';
+  if (process.env.VITE_DEV_SERVER_URL) {
+    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+  } else if (isDev) {
+    mainWindow.loadURL('http://localhost:3000').catch(() => {
+      mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+    });
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }

@@ -1,10 +1,12 @@
 {
-  "name": "rms-desktop",
+  "name": "zabad-pos",
+  "productName": "Zabad POS",
   "version": "1.0.0",
-  "description": "Enterprise Grade Offline-First Retail Management System",
+  "description": "Zabad Seafood POS & Retail Management System",
   "main": "dist/main/index.js",
   "scripts": {
     "dev": "vite",
+    "start": "electron .",
     "build": "npm run typecheck && npm run build:main && npm run build:preload && npm run build:renderer",
     "build:main": "tsc -p tsconfig.main.json",
     "build:preload": "tsc -p tsconfig.preload.json",
@@ -27,6 +29,7 @@
     "react-hook-form": "^7.52.1",
     "react-router-dom": "^6.24.1",
     "tailwind-merge": "^2.4.0",
+    "xlsx": "^0.18.5",
     "zod": "^3.23.8",
     "zustand": "^4.5.4"
   },
@@ -41,7 +44,7 @@
     "@typescript-eslint/parser": "^7.16.0",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
-    "electron": "^31.2.0",
+    "electron": "^31.7.7",
     "electron-builder": "^24.13.3",
     "eslint": "^8.57.0",
     "eslint-plugin-react": "^7.34.3",

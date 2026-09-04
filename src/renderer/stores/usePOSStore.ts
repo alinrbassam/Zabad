@@ -27,21 +27,36 @@ interface POSState {
   addToCart: (product: ProductEntity, qty?: number) => void;
   removeFromCart: (index: number) => void;
   updateCartItem: (index: number, key: keyof CartItem, val: unknown) => void;
+  debts: SalesOrderEntity[];
   clearCart: () => void;
   setOrderDiscount: (discount: number) => void;
   setAmountTendered: (amount: number) => void;
   checkout: (
     payments: {
-      paymentMethod: 'Cash' | 'Card' | 'Digital Wallet' | 'Store Credit';
+      paymentMethod: 'Cash' | 'Card' | 'Digital Wallet' | 'Store Credit' | 'Borrow' | 'Credit' | string;
       amount: number;
       referenceNumber?: string;
     }[],
     cashierId?: string,
+    customerDetails?: {
+      customerName?: string;
+      customerPhone?: string;
+      dueDate?: string;
+      notes?: string;
+    },
   ) => Promise<SalesOrderEntity | null>;
   holdCurrentSale: (referenceName: string, cashierId?: string) => Promise<boolean>;
   loadSuspendedSales: () => Promise<void>;
   resumeSale: (id: string) => Promise<boolean>;
   loadSalesHistory: (query?: string) => Promise<void>;
+  loadDebts: (query?: string) => Promise<void>;
+  settleDebt: (
+    saleId: string,
+    amount: number,
+    paymentMethod?: string,
+    notes?: string,
+    cashierId?: string,
+  ) => Promise<boolean>;
   loadSaleById: (id: string) => Promise<void>;
   processRefund: (payload: POSRefundInput, userId?: string) => Promise<boolean>;
 }
@@ -54,6 +69,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
   notes: '',
   suspendedSales: [],
   salesHistory: [],
+  debts: [],
   selectedSale: null,
   isLoading: false,
   error: null,
@@ -94,12 +110,16 @@ export const usePOSStore = create<POSState>((set, get) => ({
   setOrderDiscount: (discount: number) => set({ orderDiscount: discount }),
   setAmountTendered: (amount: number) => set({ amountTendered: amount }),
 
-  checkout: async (payments, cashierId) => {
+  checkout: async (payments, cashierId, customerDetails) => {
     set({ isLoading: true, error: null });
     try {
       if (window.api?.posCheckout) {
         const payload: POSCheckoutInput = {
           customerId: get().customerId || undefined,
+          customerName: customerDetails?.customerName,
+          customerPhone: customerDetails?.customerPhone,
+          dueDate: customerDetails?.dueDate,
+          notes: customerDetails?.notes || get().notes || undefined,
           orderDiscount: get().orderDiscount,
           amountTendered: get().amountTendered,
           items: get().cart.map((item) => ({
@@ -111,7 +131,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
             discount: item.discount,
             taxRate: item.taxRate,
           })),
-          payments,
+          payments: payments as POSCheckoutInput['payments'],
         };
 
         const res = await window.api.posCheckout(payload, cashierId);
@@ -184,6 +204,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
       if (window.api?.resumeSuspendedSale) {
         const res = await window.api.resumeSuspendedSale(id);
         if (res.success && res.data) {
+          set({ cart: res.data.items as CartItem[] });
           await get().loadSuspendedSales();
           return true;
         }
@@ -208,6 +229,49 @@ export const usePOSStore = create<POSState>((set, get) => ({
       }
     } catch (err) {
       set({ error: (err as Error).message });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  loadDebts: async (query = '') => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.getDebtsList) {
+        const res = await window.api.getDebtsList(query);
+        if (res.success && res.data) {
+          set({ debts: res.data });
+        }
+      }
+    } catch (err) {
+      set({ error: (err as Error).message });
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  settleDebt: async (saleId: string, amount: number, paymentMethod = 'Cash', notes?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.settleDebt) {
+        const res = await window.api.settleDebt({
+          saleId,
+          amount,
+          paymentMethod,
+          notes,
+        });
+        if (res.success) {
+          await get().loadDebts();
+          await get().loadSalesHistory();
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Debt settlement failed' });
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
     } finally {
       set({ isLoading: false });
     }

@@ -30,7 +30,7 @@ export const CategoriesPage: React.FC = () => {
       if (window.api?.createCategory) {
         const res = await window.api.createCategory({
           nameEn,
-          nameAr,
+          nameAr: nameAr || nameEn,
           isActive: true,
           displayOrder: 0,
         });
@@ -68,15 +68,10 @@ export const CategoriesPage: React.FC = () => {
   const columns: Column<CategoryEntity>[] = [
     {
       key: 'name_en',
-      header: 'English Name',
+      header: 'Category Name',
       render: (c) => (
         <span className="font-bold text-slate-800 dark:text-slate-200">{c.name_en}</span>
       ),
-    },
-    {
-      key: 'name_ar',
-      header: 'Arabic Name',
-      render: (c) => <span className="text-slate-600 dark:text-slate-400">{c.name_ar}</span>,
     },
     {
       key: 'actions',
@@ -101,15 +96,15 @@ export const CategoriesPage: React.FC = () => {
           <FolderTree className="h-6 w-6 text-sky-600" />
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Category Hierarchy
+              Product Categories
             </h1>
             <p className="text-xs text-slate-500">
-              Manage store categories, subcategories, and display structures.
+              Manage fish and product categories (e.g. Fresh Fish, Fillets, Shrimp & Shellfish).
             </p>
           </div>
         </div>
 
-        <Button onClick={() => setIsOpen(true)} size="md" className="flex items-center space-x-2">
+        <Button onClick={() => setIsOpen(true)} size="md" className="flex items-center space-x-2 bg-sky-600 hover:bg-sky-500 font-bold">
           <Plus className="h-4 w-4" />
           <span>New Category</span>
         </Button>
@@ -123,22 +118,18 @@ export const CategoriesPage: React.FC = () => {
         <form onSubmit={handleCreate} className="space-y-4">
           {error && <Alert variant="danger">{error}</Alert>}
           <Input
-            label="English Name *"
+            label="Category Name *"
+            placeholder="e.g. Fresh Fish, Fillets, Shrimp..."
             value={nameEn}
             onChange={(e) => setNameEn(e.target.value)}
             required
-          />
-          <Input
-            label="Arabic Name *"
-            value={nameAr}
-            onChange={(e) => setNameAr(e.target.value)}
-            required
+            autoFocus
           />
           <div className="pt-2 flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
               Cancel
             </Button>
-            <Button type="submit" isLoading={isLoading}>
+            <Button type="submit" isLoading={isLoading} className="bg-sky-600 hover:bg-sky-500 font-bold">
               Save Category
             </Button>
           </div>

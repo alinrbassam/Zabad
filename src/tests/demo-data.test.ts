@@ -19,7 +19,7 @@ describe('DemoDataService', () => {
   it('should seed demo products and categories', () => {
     const res = demoService.seedDemoData();
     expect(res.categoriesSeeded).toBe(3);
-    expect(res.productsSeeded).toBe(3);
+    expect(res.productsSeeded).toBe(5);
     expect(mockDb.prepare).toHaveBeenCalled();
   });
 

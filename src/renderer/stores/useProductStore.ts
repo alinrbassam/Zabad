@@ -19,7 +19,7 @@ interface ProductState {
 
   loadProducts: (query?: string) => Promise<void>;
   loadMetadata: () => Promise<void>;
-  createProduct: (input: ProductInput, userId?: string) => Promise<boolean>;
+  createProduct: (input: ProductInput, userId?: string) => Promise<ProductEntity | null>;
   archiveProduct: (id: string, userId?: string) => Promise<boolean>;
 }
 
@@ -75,18 +75,18 @@ export const useProductStore = create<ProductState>((set, get) => ({
     try {
       if (window.api?.createProduct) {
         const res = await window.api.createProduct(input, userId);
-        if (res.success) {
+        if (res.success && res.data) {
           await get().loadProducts();
-          return true;
+          return res.data as ProductEntity;
         } else {
           set({ error: res.error?.message || 'Failed creating product' });
-          return false;
+          return null;
         }
       }
-      return false;
+      return null;
     } catch (err) {
       set({ error: (err as Error).message });
-      return false;
+      return null;
     } finally {
       set({ isLoading: false });
     }

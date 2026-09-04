@@ -51,12 +51,16 @@ export class POSSuspendedService {
         now,
       );
       for (const item of input.items) {
+        let unitId = item.unitId || 'kg';
+        const validUnit = this.db.prepare('SELECT id FROM units WHERE id = ? OR LOWER(code) = LOWER(?)').get(unitId, unitId) as { id: string } | undefined;
+        if (validUnit) unitId = validUnit.id;
+
         insertItem.run(
           crypto.randomUUID(),
           id,
           item.productId,
           item.batchId || null,
-          item.unitId,
+          unitId,
           item.quantity,
           item.unitPrice,
           item.discount,
@@ -87,11 +91,36 @@ export class POSSuspendedService {
     if (!sale) throw new Error('Suspended sale not found');
 
     const items = this.db
-      .prepare('SELECT * FROM suspended_sale_items WHERE suspended_sale_id = ?')
+      .prepare(`
+        SELECT ssi.*, p.sku, p.name_en, p.name_ar, p.selling_price, p.is_tax_exempt, p.tax_rate as p_tax_rate, p.base_unit_id, p.allow_decimal_qty
+        FROM suspended_sale_items ssi
+        LEFT JOIN products p ON ssi.product_id = p.id
+        WHERE ssi.suspended_sale_id = ?
+      `)
       .all(id);
 
     this.db.prepare('DELETE FROM suspended_sales WHERE id = ?').run(id);
 
-    return { sale, items };
+    const formattedItems = items.map((item: any) => ({
+      product: {
+        id: item.product_id,
+        sku: item.sku,
+        name_en: item.name_en,
+        name_ar: item.name_ar,
+        selling_price: item.selling_price,
+        is_tax_exempt: item.is_tax_exempt,
+        tax_rate: item.p_tax_rate,
+        base_unit_id: item.base_unit_id,
+        allow_decimal_qty: item.allow_decimal_qty,
+      },
+      batchId: item.batch_id || undefined,
+      unitId: item.unit_id,
+      quantity: item.quantity,
+      unitPrice: item.unit_price,
+      discount: item.discount,
+      taxRate: item.tax_rate,
+    }));
+
+    return { sale, items: formattedItems };
   }
 }

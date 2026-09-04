@@ -57,9 +57,9 @@ export const SetupWizardPayloadSchema = z.object({
   city: z.string().optional(),
   country: z.string().optional(),
   taxNumber: z.string().optional(),
-  currency: z.string().default('USD'),
+  currency: z.string().default('FCFA'),
   timezone: z.string().default('UTC'),
-  dateFormat: z.string().default('YYYY-MM-DD'),
+  dateFormat: z.string().default('DD-MM-YYYY'),
   timeFormat: z.string().default('24h'),
   taxEnabled: z.preprocess((val) => val === 'true' || val === true, z.boolean()).default(true),
   taxRate: z.number().min(0).max(100).default(15),
@@ -187,11 +187,11 @@ export const SupplierSchema = z.object({
 
 export const RawProductSchema = z.object({
   id: z.string().optional(),
-  sku: z.string().min(1, 'SKU is required'),
+  sku: z.string().optional().default(() => 'SKU-' + Math.floor(100000 + Math.random() * 900000)),
   productCode: z.string().optional(),
   primaryBarcode: z.string().optional(),
-  nameEn: z.string().min(1, 'English name is required'),
-  nameAr: z.string().min(1, 'Arabic name is required'),
+  nameEn: z.string().min(1, 'Product name is required'),
+  nameAr: z.string().optional().default(''),
   shortName: z.string().optional(),
   description: z.string().optional(),
   internalNotes: z.string().optional(),
@@ -363,19 +363,42 @@ export const POSCartItemSchema = z.object({
 });
 
 export const POSPaymentSchema = z.object({
-  paymentMethod: z.enum(['Cash', 'Card', 'Digital Wallet', 'Store Credit']),
-  amount: z.number().min(0.01, 'Payment amount must be positive'),
+  paymentMethod: z.enum(['Cash', 'Card', 'Digital Wallet', 'Store Credit', 'Borrow', 'Credit']),
+  amount: z.number().min(0, 'Payment amount cannot be negative'),
   referenceNumber: z.string().optional(),
   notes: z.string().optional(),
 });
 
 export const POSCheckoutSchema = z.object({
   customerId: z.string().optional(),
+  customerName: z.string().optional(),
+  customerPhone: z.string().optional(),
+  dueDate: z.string().optional(),
+  notes: z.string().optional(),
   orderDiscount: z.number().min(0).default(0),
   amountTendered: z.number().min(0).default(0),
   shiftId: z.string().optional(),
   items: z.array(POSCartItemSchema).min(1, 'Cart cannot be empty'),
   payments: z.array(POSPaymentSchema).min(1, 'At least one payment is required'),
+});
+
+export const ExpenseSchema = z.object({
+  category: z.enum([
+    'Electricity',
+    'Water',
+    'Ice & Cooling',
+    'Rent',
+    'Salaries',
+    'Transport',
+    'Maintenance',
+    'Other',
+  ]),
+  title: z.string().min(1, 'Title or description is required'),
+  amount: z.number().min(0.01, 'Amount must be greater than zero'),
+  paymentMethod: z.enum(['Cash', 'Card', 'Bank Transfer', 'Digital Wallet', 'Other']).default('Cash'),
+  expenseDate: z.string().min(1, 'Expense date is required'),
+  receiptReference: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 export const POSRefundSchema = z.object({
@@ -413,3 +436,4 @@ export type GoodsReceivingInput = z.infer<typeof GoodsReceivingSchema>;
 export type PurchaseReturnInput = z.infer<typeof PurchaseReturnSchema>;
 export type POSCheckoutInput = z.infer<typeof POSCheckoutSchema>;
 export type POSRefundInput = z.infer<typeof POSRefundSchema>;
+export type ExpenseInput = z.infer<typeof ExpenseSchema>;

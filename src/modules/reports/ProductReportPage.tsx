@@ -4,6 +4,7 @@ import { useAuthStore } from '@stores/useAuthStore';
 import { Card } from '@components/ui/Card';
 import { Table, Column } from '@components/ui/Table';
 import { Award } from 'lucide-react';
+import { formatCurrency } from '@renderer/utils/currency';
 
 export const ProductReportPage: React.FC = () => {
   const { productData, loadProductReport } = useReportsStore();
@@ -34,10 +35,10 @@ export const ProductReportPage: React.FC = () => {
     },
     {
       key: 'total_revenue',
-      header: 'Total Revenue ($)',
+      header: 'Total Revenue (FCFA)',
       render: (r) => (
         <span className="font-black text-slate-900 dark:text-slate-100">
-          ${Number(r.total_revenue).toFixed(2)}
+          {formatCurrency(Number(r.total_revenue))}
         </span>
       ),
     },
@@ -45,17 +46,17 @@ export const ProductReportPage: React.FC = () => {
       ? [
           {
             key: 'total_cost',
-            header: 'Total Cost ($)',
+            header: 'Total Cost (FCFA)',
             render: (r: Record<string, unknown>) => (
-              <span>${Number(r.total_cost || 0).toFixed(2)}</span>
+              <span>{formatCurrency(Number(r.total_cost || 0))}</span>
             ),
           },
           {
             key: 'total_profit',
-            header: 'Gross Profit ($)',
+            header: 'Gross Profit (FCFA)',
             render: (r: Record<string, unknown>) => (
               <span className="font-black text-emerald-600 dark:text-emerald-400">
-                ${Number(r.total_profit || 0).toFixed(2)}
+                {formatCurrency(Number(r.total_profit || 0))}
               </span>
             ),
           },

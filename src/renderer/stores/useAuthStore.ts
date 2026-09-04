@@ -10,6 +10,8 @@ interface AuthState {
   isScreenLocked: boolean;
   rememberedUsername: string;
   inactivityTimeoutMinutes: number;
+  activeRoleMode: 'cashier' | 'manager';
+  setRoleMode: (mode: 'cashier' | 'manager') => void;
   setAuth: (data: {
     token: string;
     user: UserEntity;
@@ -31,6 +33,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isScreenLocked: false,
   rememberedUsername: localStorage.getItem('rms_remembered_username') || '',
   inactivityTimeoutMinutes: 30,
+  activeRoleMode: (localStorage.getItem('zabad_role_mode') as 'cashier' | 'manager') || 'manager',
+
+  setRoleMode: (mode: 'cashier' | 'manager') => {
+    localStorage.setItem('zabad_role_mode', mode);
+    set({ activeRoleMode: mode });
+  },
 
   setAuth: ({ token, user, role, permissions }) => {
     localStorage.setItem('rms_auth_token', token);

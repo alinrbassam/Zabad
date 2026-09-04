@@ -27,6 +27,15 @@ export class GoodsReceiptService {
     const grNumber = this.numberingService.generateNextNumber('gr');
     const now = new Date().toISOString();
 
+    for (const item of input.items) {
+      const product = this.db.prepare('SELECT * FROM products WHERE id = ?').get(item.productId) as
+        | { track_batches?: number }
+        | undefined;
+      if (product?.track_batches && !item.batchNumber) {
+        throw new Error('Batch number is required for tracked products');
+      }
+    }
+
     const insertGr = this.db.prepare(`
       INSERT INTO goods_receipts (
         id, receipt_number, po_id, supplier_id, receipt_date, delivery_note_number, status, notes, received_by, created_at

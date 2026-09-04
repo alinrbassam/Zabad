@@ -15,9 +15,9 @@ export const GeneralSettings: React.FC = () => {
     address: '',
     city: '',
     country: '',
-    currency: 'USD',
+    currency: 'FCFA',
     timezone: 'UTC',
-    dateFormat: 'YYYY-MM-DD',
+    dateFormat: 'DD-MM-YYYY',
     timeFormat: '24h',
   });
   const [isLoading, setIsLoading] = useState(false);

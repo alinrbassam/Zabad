@@ -19,6 +19,11 @@ describe('POS Refund Service', () => {
             }),
           };
         }
+        if (sql.includes('SELECT * FROM sales_orders')) {
+          return {
+            get: () => ({ id: 'sale-1', invoice_number: 'INV-2026-000001' }),
+          };
+        }
         if (sql.includes('SELECT * FROM numbering_sequences')) {
           return {
             get: () => ({ prefix: 'PR', current_number: 0, padding: 6, include_year: 1 }),

@@ -125,6 +125,16 @@ const IPC_CHANNELS = {
 
   UPDATER_CHECK_GITHUB: 'updater:check_github',
   SYSTEM_SELECT_DIRECTORY: 'system:select_directory',
+
+  // Debts & Borrowing Channels
+  POS_DEBTS_LIST: 'pos:debts_list',
+  POS_SETTLE_DEBT: 'pos:settle_debt',
+
+  // Expenses Channels
+  EXPENSES_LIST: 'expenses:list',
+  EXPENSES_CREATE: 'expenses:create',
+  EXPENSES_DELETE: 'expenses:delete',
+  EXPENSES_SUMMARY: 'expenses:summary',
 } as const;
 import {
   ApiResponse,
@@ -148,6 +158,7 @@ import {
   SalesOrderItemEntity,
   SuspendedSaleEntity,
   SalesRefundEntity,
+  ExpenseEntity,
   POStatus,
   AppConfig,
 } from '../shared/types';
@@ -479,6 +490,39 @@ export const api = {
 
   selectDirectory: (): Promise<ApiResponse<string | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYSTEM_SELECT_DIRECTORY),
+
+  // Debts & Borrowing
+  getDebtsList: (query?: string): Promise<ApiResponse<SalesOrderEntity[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.POS_DEBTS_LIST, query),
+  settleDebt: (payload: {
+    saleId: string;
+    amount: number;
+    paymentMethod?: string;
+    notes?: string;
+  }): Promise<ApiResponse<SalesOrderEntity>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.POS_SETTLE_DEBT, payload),
+
+  // Operational Expenses
+  getExpenses: (options?: {
+    startDate?: string;
+    endDate?: string;
+    category?: string;
+    limit?: number;
+  }): Promise<ApiResponse<ExpenseEntity[]>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_LIST, options),
+  createExpense: (payload: unknown): Promise<ApiResponse<ExpenseEntity>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_CREATE, payload),
+  deleteExpense: (id: string): Promise<ApiResponse<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_DELETE, id),
+  getExpenseSummary: (
+    startDate?: string,
+    endDate?: string,
+  ): Promise<
+    ApiResponse<{
+      total: number;
+      byCategory: { category: string; total: number; count: number }[];
+    }>
+  > => ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_SUMMARY, startDate, endDate),
 };
 
 export type WindowApi = typeof api;

@@ -4,6 +4,7 @@ import { Table, Column } from '@components/ui/Table';
 import { Card } from '@components/ui/Card';
 import { InventoryMovementEntity } from '@shared/types';
 import { Boxes } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
 
 export const StockOverviewPage: React.FC = () => {
   const { movements, loadMovements } = useInventoryStore();
@@ -18,8 +19,20 @@ export const StockOverviewPage: React.FC = () => {
       header: 'Timestamp',
       render: (m) => (
         <span className="font-mono text-slate-500 text-[11px]">
-          {new Date(m.created_at).toLocaleString()}
+          {formatDateTime(m.created_at)}
         </span>
+      ),
+    },
+    {
+      key: 'product_name' as keyof InventoryMovementEntity,
+      header: 'Product',
+      render: (m) => (
+        <div>
+          <span className="font-bold text-slate-900 dark:text-slate-100 block">
+            {m.product_name || 'Product'}
+          </span>
+          {m.sku && <span className="text-[10px] font-mono text-slate-400">[{m.sku}]</span>}
+        </div>
       ),
     },
     {
@@ -32,19 +45,22 @@ export const StockOverviewPage: React.FC = () => {
     {
       key: 'quantity_change',
       header: 'Qty Change',
-      render: (m) => (
-        <span
-          className={`font-black ${m.quantity_change > 0 ? 'text-emerald-600' : 'text-rose-600'}`}
-        >
-          {m.quantity_change > 0 ? `+${m.quantity_change}` : m.quantity_change}
-        </span>
-      ),
+      render: (m) => {
+        const isPos = m.quantity_change > 0;
+        return (
+          <span className={`font-black ${isPos ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {isPos ? `+${m.quantity_change}` : m.quantity_change} {m.unit_symbol || ''}
+          </span>
+        );
+      },
     },
     {
       key: 'quantity_after',
-      header: 'Balance After',
+      header: 'Before ➔ After',
       render: (m) => (
-        <span className="font-semibold text-slate-700 dark:text-slate-300">{m.quantity_after}</span>
+        <span className="font-semibold text-slate-700 dark:text-slate-300">
+          {m.quantity_before} ➔ <span className="font-bold text-slate-900 dark:text-slate-100">{m.quantity_after}</span> {m.unit_symbol || ''}
+        </span>
       ),
     },
     {

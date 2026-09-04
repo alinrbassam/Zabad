@@ -4,6 +4,7 @@ import { useAuthStore } from '@stores/useAuthStore';
 import { Card } from '@components/ui/Card';
 import { Table, Column } from '@components/ui/Table';
 import { Boxes } from 'lucide-react';
+import { formatCurrency } from '@renderer/utils/currency';
 
 export const InventoryReportPage: React.FC = () => {
   const { inventoryData, loadInventoryReport } = useReportsStore();
@@ -32,29 +33,29 @@ export const InventoryReportPage: React.FC = () => {
     },
     {
       key: 'selling_price',
-      header: 'Retail Price ($)',
-      render: (r) => <span>${Number(r.selling_price).toFixed(2)}</span>,
+      header: 'Retail Price (FCFA)',
+      render: (r) => <span>{formatCurrency(Number(r.selling_price))}</span>,
     },
     {
       key: 'total_retail_value',
-      header: 'Total Retail Value ($)',
-      render: (r) => <span className="font-bold">${Number(r.total_retail_value).toFixed(2)}</span>,
+      header: 'Total Retail Value (FCFA)',
+      render: (r) => <span className="font-bold">{formatCurrency(Number(r.total_retail_value))}</span>,
     },
     ...(isOwner
       ? [
           {
             key: 'avg_cost',
-            header: 'Avg Cost ($)',
+            header: 'Avg Cost (FCFA)',
             render: (r: Record<string, unknown>) => (
-              <span>${Number(r.avg_cost || 0).toFixed(2)}</span>
+              <span>{formatCurrency(Number(r.avg_cost || 0))}</span>
             ),
           },
           {
             key: 'total_cost_value',
-            header: 'Total Cost Valuation ($)',
+            header: 'Total Cost Valuation (FCFA)',
             render: (r: Record<string, unknown>) => (
               <span className="font-black text-emerald-600 dark:text-emerald-400">
-                ${Number(r.total_cost_value || 0).toFixed(2)}
+                {formatCurrency(Number(r.total_cost_value || 0))}
               </span>
             ),
           },

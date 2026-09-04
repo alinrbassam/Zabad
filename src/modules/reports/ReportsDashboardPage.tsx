@@ -127,7 +127,7 @@ export const ReportsDashboardPage: React.FC = () => {
                   <th className="p-3">Rank</th>
                   <th className="p-3">Product Name</th>
                   <th className="p-3 text-center">Qty Sold</th>
-                  <th className="p-3 text-right">Revenue ($)</th>
+                  <th className="p-3 text-right">Revenue (FCFA)</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">

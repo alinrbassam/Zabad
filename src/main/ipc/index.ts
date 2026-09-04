@@ -10,6 +10,7 @@ import { registerPurchasingIpcHandlers } from './purchasing.ipc';
 import { registerPOSIpcHandlers } from './pos.ipc';
 import { registerReportsIpcHandlers } from './reports.ipc';
 import { registerCommercialIpcHandlers } from './commercial.ipc';
+import { registerExpenseIpcHandlers } from './expense.ipc';
 import { IPC_CHANNELS } from '../../shared/ipc/channels';
 import { ApiResponse } from '../../shared/types';
 import {
@@ -217,6 +218,7 @@ export function registerIpcHandlers(): void {
   registerPOSIpcHandlers(db);
   registerReportsIpcHandlers(db);
   registerCommercialIpcHandlers(db);
+  registerExpenseIpcHandlers(db);
 
   logger.info('IPC', 'All IPC handlers registered successfully');
 }

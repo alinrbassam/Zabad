@@ -9,6 +9,8 @@ import { Badge } from '@components/ui/Badge';
 import { SalesOrderEntity } from '@shared/types';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
 import { History, Printer, Undo2 } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
+import { formatCurrency } from '../../renderer/utils/currency';
 
 export const SalesHistoryPage: React.FC = () => {
   const { salesHistory, loadSalesHistory, selectedSale, loadSaleById, processRefund } =
@@ -27,11 +29,11 @@ export const SalesHistoryPage: React.FC = () => {
   };
 
   const handleRefund = async (sale: SalesOrderEntity) => {
-    if (!confirm(`Are you sure you want to refund receipt ${sale.invoice_number}?`)) return;
-    const ok = await processRefund(
+    if (!confirm(`Process refund for ${sale.invoice_number}?`)) return;
+    await processRefund(
       {
         saleId: sale.id,
-        reason: 'Customer return',
+        reason: 'Customer Return',
         refundMethod: 'Cash',
         items: [
           {
@@ -44,9 +46,6 @@ export const SalesHistoryPage: React.FC = () => {
       },
       user?.id,
     );
-    if (ok) {
-      alert('Sale refunded successfully');
-    }
   };
 
   const columns: Column<SalesOrderEntity>[] = [
@@ -55,11 +54,23 @@ export const SalesHistoryPage: React.FC = () => {
       header: 'Receipt #',
       render: (s) => (
         <div>
-          <span className="font-bold text-sky-600 block">{s.invoice_number}</span>
+          <span className="font-bold text-sky-600 dark:text-sky-400 font-mono">
+            {s.invoice_number}
+          </span>
+          <br />
           <span className="text-[10px] text-slate-400">
-            {new Date(s.created_at).toLocaleString()}
+            {formatDateTime(s.created_at)}
           </span>
         </div>
+      ),
+    },
+    {
+      key: 'customer_name',
+      header: 'Customer / Borrower',
+      render: (s) => (
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+          {s.customer_name || 'Walk-in'}
+        </span>
       ),
     },
     {
@@ -71,8 +82,8 @@ export const SalesHistoryPage: React.FC = () => {
       key: 'grand_total',
       header: 'Grand Total',
       render: (s) => (
-        <span className="font-black text-slate-900 dark:text-slate-100">
-          ${s.grand_total.toFixed(2)}
+        <span className="font-black text-slate-900 dark:text-slate-100 font-mono">
+          {formatCurrency(s.grand_total)}
         </span>
       ),
     },
@@ -82,6 +93,8 @@ export const SalesHistoryPage: React.FC = () => {
       render: (s) => {
         let variant: 'success' | 'danger' | 'warning' | 'neutral' = 'success';
         if (s.payment_status === 'Refunded' || s.payment_status === 'Voided') variant = 'danger';
+        else if (s.payment_status === 'Unpaid') variant = 'danger';
+        else if (s.payment_status === 'Partially paid') variant = 'warning';
         return <Badge variant={variant}>{s.payment_status}</Badge>;
       },
     },

@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { POSCheckoutInput } from '../../shared/validation';
-import { SalesOrderEntity, SalesOrderItemEntity } from '../../shared/types';
+import { SalesOrderEntity } from '../../shared/types';
 import { InventoryService } from './inventory.service';
 import { PurchaseNumberingService } from './purchase-numbering.service';
 import { ProductRepository } from '../database/repositories/product.repository';
@@ -52,7 +52,9 @@ export class POSSalesService {
     const grandTotal =
       Math.round((subtotal - itemDiscountTotal - orderDiscount + taxTotal) * 100) / 100;
 
-    const paidAmount = input.payments.reduce((sum, p) => sum + p.amount, 0);
+    const paidAmount = input.payments
+      .filter((p) => p.paymentMethod !== 'Borrow' && p.paymentMethod !== 'Credit')
+      .reduce((sum, p) => sum + p.amount, 0);
     const changeAmount = Math.max(0, Math.round((input.amountTendered - grandTotal) * 100) / 100);
 
     return {
@@ -73,12 +75,23 @@ export class POSSalesService {
     const totals = this.calculateSaleTotals(input);
     const now = new Date().toISOString();
 
+    const hasBorrow = input.payments.some((p) => p.paymentMethod === 'Borrow' || p.paymentMethod === 'Credit');
+    let paymentStatus: 'Paid' | 'Partially paid' | 'Unpaid' = 'Paid';
+    if (totals.paidAmount >= totals.grandTotal && !hasBorrow) {
+      paymentStatus = 'Paid';
+    } else if (totals.paidAmount > 0) {
+      paymentStatus = 'Partially paid';
+    } else {
+      paymentStatus = 'Unpaid';
+    }
+
     const insertSale = this.db.prepare(`
       INSERT INTO sales_orders (
-        id, invoice_number, customer_id, subtotal, item_discount, order_discount,
+        id, invoice_number, customer_id, customer_name, customer_phone, due_date, notes,
+        subtotal, item_discount, order_discount,
         tax_total, grand_total, paid_amount, change_amount, payment_status,
         payment_method, shift_id, cashier_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Paid', ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertItem = this.db.prepare(`
@@ -94,13 +107,17 @@ export class POSSalesService {
     `);
 
     const paymentMethodName =
-      input.payments.length === 1 ? input.payments[0].paymentMethod : 'Split';
+      input.payments.length === 1 ? input.payments[0].paymentMethod : (hasBorrow ? 'Borrow' : 'Split');
 
     this.db.transaction(() => {
       insertSale.run(
         saleId,
         invoiceNumber,
         input.customerId || null,
+        input.customerName || null,
+        input.customerPhone || null,
+        input.dueDate || null,
+        input.notes || null,
         totals.subtotal,
         totals.itemDiscountTotal,
         totals.orderDiscount,
@@ -108,6 +125,7 @@ export class POSSalesService {
         totals.grandTotal,
         totals.paidAmount,
         totals.changeAmount,
+        paymentStatus,
         paymentMethodName,
         input.shiftId || null,
         cashierId || 'cashier',
@@ -127,7 +145,27 @@ export class POSSalesService {
       }
 
       for (const item of totals.items) {
-        const product = this.productRepo.findById(item.productId);
+        let product = this.productRepo.findById(item.productId);
+
+        let unitId = item.unitId;
+        const validUnit = this.db.prepare('SELECT id FROM units WHERE id = ? OR LOWER(code) = LOWER(?)').get(unitId, unitId) as { id: string } | undefined;
+        if (validUnit) {
+          unitId = validUnit.id;
+        } else {
+          const defaultUnit = this.db.prepare('SELECT id FROM units LIMIT 1').get() as { id: string } | undefined;
+          unitId = defaultUnit ? defaultUnit.id : 'unit-kg-std';
+        }
+
+        if (!product) {
+          const defaultCat = this.db.prepare('SELECT id FROM categories LIMIT 1').get() as { id: string } | undefined;
+          const catId = defaultCat ? defaultCat.id : 'fresh';
+          this.db.prepare(`
+            INSERT OR IGNORE INTO products (id, sku, name_en, name_ar, category_id, base_unit_id, selling_price, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+          `).run(item.productId, `SKU-${item.productId}`, item.productId, item.productId, catId, unitId, item.unitPrice);
+          product = this.productRepo.findById(item.productId);
+        }
+
         const costPrice = product ? product.avg_cost || product.purchase_cost || 0 : 0;
 
         let selectedBatchId = item.batchId;
@@ -144,7 +182,7 @@ export class POSSalesService {
           saleId,
           item.productId,
           selectedBatchId || null,
-          item.unitId,
+          unitId,
           item.quantity,
           item.unitPrice,
           costPrice,
@@ -174,13 +212,17 @@ export class POSSalesService {
       module: 'POS',
       details: `Completed Sale #${invoiceNumber} total $${totals.grandTotal} via ${paymentMethodName}`,
     });
-
     logger.info('POSSalesService', `Completed Sale #${invoiceNumber}`);
-
+    const found = this.getSaleById(saleId);
+    if (found) return found as any;
     return {
       id: saleId,
       invoice_number: invoiceNumber,
       customer_id: input.customerId,
+      customer_name: input.customerName,
+      customer_phone: input.customerPhone,
+      due_date: input.dueDate,
+      notes: input.notes,
       subtotal: totals.subtotal,
       item_discount: totals.itemDiscountTotal,
       order_discount: totals.orderDiscount,
@@ -188,12 +230,12 @@ export class POSSalesService {
       grand_total: totals.grandTotal,
       paid_amount: totals.paidAmount,
       change_amount: totals.changeAmount,
-      payment_status: 'Paid',
+      payment_status: paymentStatus,
       payment_method: paymentMethodName as 'Cash' | 'Card' | 'Split' | 'Other',
       shift_id: input.shiftId,
       cashier_id: cashierId,
       created_at: now,
-    };
+    } as any;
   }
 
   public getSalesHistory(query = ''): SalesOrderEntity[] {
@@ -211,14 +253,75 @@ export class POSSalesService {
 
   public getSaleById(
     id: string,
-  ): (SalesOrderEntity & { items: SalesOrderItemEntity[] }) | undefined {
+  ): (SalesOrderEntity & { items: any[] }) | undefined {
     const sale = this.db.prepare('SELECT * FROM sales_orders WHERE id = ?').get(id) as
       SalesOrderEntity | undefined;
     if (!sale) return undefined;
 
     const items = this.db
-      .prepare('SELECT * FROM sales_order_items WHERE sale_id = ?')
-      .all(id) as SalesOrderItemEntity[];
+      .prepare(`
+        SELECT soi.*, p.name_en, p.name_ar, u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol
+        FROM sales_order_items soi
+        LEFT JOIN products p ON soi.product_id = p.id
+        LEFT JOIN units u ON soi.unit_id = u.id
+        WHERE soi.sale_id = ?
+      `)
+      .all(id);
     return { ...sale, items };
+  }
+
+  public getDebts(query = ''): SalesOrderEntity[] {
+    let sql = `
+      SELECT * FROM sales_orders
+      WHERE (payment_status IN ('Unpaid', 'Partially paid') OR payment_method IN ('Borrow', 'Credit'))
+    `;
+    const params: string[] = [];
+    if (query) {
+      sql += ' AND (invoice_number LIKE ? OR customer_name LIKE ? OR customer_phone LIKE ?)';
+      params.push(`%${query}%`, `%${query}%`, `%${query}%`);
+    }
+    sql += ' ORDER BY created_at DESC LIMIT 200';
+    return this.db.prepare(sql).all(...params) as SalesOrderEntity[];
+  }
+
+  public settleDebt(
+    saleId: string,
+    amount: number,
+    paymentMethod = 'Cash',
+    cashierId?: string,
+    notes?: string,
+  ): SalesOrderEntity {
+    const sale = this.db.prepare('SELECT * FROM sales_orders WHERE id = ?').get(saleId) as SalesOrderEntity | undefined;
+    if (!sale) throw new Error('Sale not found');
+
+    const newPaidAmount = Math.round(((sale.paid_amount || 0) + amount) * 100) / 100;
+    const newStatus = newPaidAmount >= sale.grand_total ? 'Paid' : 'Partially paid';
+    const now = new Date().toISOString();
+
+    const insertPayment = this.db.prepare(`
+      INSERT INTO sales_payments (id, sale_id, payment_method, amount, notes, created_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    const updateSale = this.db.prepare(`
+      UPDATE sales_orders
+      SET paid_amount = ?, payment_status = ?
+      WHERE id = ?
+    `);
+
+    const tx = this.db.transaction(() => {
+      insertPayment.run(crypto.randomUUID(), saleId, paymentMethod, amount, notes || 'Debt Settlement', now);
+      updateSale.run(newPaidAmount, newStatus, saleId);
+    });
+    tx();
+
+    this.auditRepo.logAction({
+      user_id: cashierId,
+      action: 'DEBT_SETTLED',
+      module: 'POS',
+      details: `Settled debt of ${amount} for invoice ${sale.invoice_number} (New Status: ${newStatus})`,
+    });
+
+    return this.getSaleById(saleId) as any;
   }
 }

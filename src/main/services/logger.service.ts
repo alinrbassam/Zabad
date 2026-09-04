@@ -17,7 +17,7 @@ export class LoggerService {
       fs.mkdirSync(this.logDir, { recursive: true });
     }
     const today = new Date().toISOString().split('T')[0];
-    this.currentLogFile = path.join(this.logDir, `rms-${today}.log`);
+    this.currentLogFile = path.join(this.logDir, `zabad-${today}.log`);
   }
 
   public static getInstance(): LoggerService {

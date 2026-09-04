@@ -6,6 +6,8 @@ import { Table, Column } from '@components/ui/Table';
 import { Badge } from '@components/ui/Badge';
 import { Input } from '@components/ui/Input';
 import { Receipt, Download } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
+import { formatCurrency } from '@renderer/utils/currency';
 
 export const SalesReportPage: React.FC = () => {
   const { startDate, endDate, setDateRange, salesData, loadSalesReport, exportCsv } =
@@ -36,7 +38,7 @@ export const SalesReportPage: React.FC = () => {
         <div>
           <span className="font-bold text-sky-600 block">{String(r.invoice_number)}</span>
           <span className="text-[10px] text-slate-400">
-            {new Date(String(r.created_at)).toLocaleString()}
+            {formatDateTime(String(r.created_at))}
           </span>
         </div>
       ),
@@ -48,18 +50,18 @@ export const SalesReportPage: React.FC = () => {
     },
     {
       key: 'subtotal',
-      header: 'Subtotal ($)',
-      render: (r) => <span>${Number(r.subtotal).toFixed(2)}</span>,
+      header: 'Subtotal (FCFA)',
+      render: (r) => <span>{formatCurrency(Number(r.subtotal))}</span>,
     },
     {
       key: 'tax_total',
-      header: 'Tax ($)',
-      render: (r) => <span>${Number(r.tax_total).toFixed(2)}</span>,
+      header: 'Tax (FCFA)',
+      render: (r) => <span>{formatCurrency(Number(r.tax_total))}</span>,
     },
     {
       key: 'grand_total',
-      header: 'Grand Total ($)',
-      render: (r) => <span className="font-black">${Number(r.grand_total).toFixed(2)}</span>,
+      header: 'Grand Total (FCFA)',
+      render: (r) => <span className="font-black">{formatCurrency(Number(r.grand_total))}</span>,
     },
     {
       key: 'payment_status',

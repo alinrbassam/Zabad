@@ -4,6 +4,7 @@ import { useProductStore } from '@stores/useProductStore';
 import { useAuthStore } from '@stores/useAuthStore';
 import { Card } from '@components/ui/Card';
 import { Input } from '@components/ui/Input';
+import { DatePicker } from '@components/ui/DatePicker';
 import { Button } from '@components/ui/Button';
 import { Alert } from '@components/ui/Alert';
 import { Undo2 } from 'lucide-react';
@@ -109,11 +110,10 @@ export const PurchaseReturnsPage: React.FC = () => {
               </select>
             </div>
 
-            <Input
+            <DatePicker
               label="Return Date *"
-              type="date"
               value={returnDate}
-              onChange={(e) => setReturnDate(e.target.value)}
+              onChange={setReturnDate}
               required
             />
 
@@ -171,9 +171,9 @@ export const PurchaseReturnsPage: React.FC = () => {
               required
             />
             <Input
-              label="Unit Cost ($) *"
+              label="Unit Cost (FCFA) *"
               type="number"
-              step="0.01"
+              step="any"
               value={unitCost}
               onChange={(e) => setUnitCost(Number(e.target.value))}
               required

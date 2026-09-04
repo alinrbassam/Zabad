@@ -1,11 +1,16 @@
-appId: com.rms.enterprise
-productName: RMS Enterprise Retail System
-copyright: Copyright © 2026 RMS Enterprise Software
+appId: com.zabad.pos
+productName: Zabad POS
+copyright: Copyright © 2026 Zabad Retail Systems
 directories:
   output: dist-release
 files:
   - dist/**/*
   - package.json
+
+publish:
+  provider: github
+  owner: alinrbassam
+  repo: Zabad
 
 win:
   forceCodeSigning: false
@@ -22,9 +27,9 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: RMS Enterprise
-  uninstallDisplayName: RMS Enterprise Retail System
+  shortcutName: Zabad POS
+  uninstallDisplayName: Zabad POS
 
 extraMetadata:
   main: dist/main/index.js
-  author: RMS Enterprise Software
+  author: Zabad Retail Systems

@@ -125,4 +125,44 @@ export function registerPOSIpcHandlers(db: Database.Database): void {
       }
     },
   );
+
+  ipcMain.handle(
+    IPC_CHANNELS.POS_DEBTS_LIST,
+    async (_, query?: string): Promise<ApiResponse> => {
+      try {
+        const res = posSalesService.getDebts(query);
+        return { success: true, data: res };
+      } catch (err) {
+        return {
+          success: false,
+          error: { code: 'POS_DEBTS_LIST_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.POS_SETTLE_DEBT,
+    async (
+      _,
+      payload: { saleId: string; amount: number; paymentMethod?: string; notes?: string },
+      cashierId?: string,
+    ): Promise<ApiResponse> => {
+      try {
+        const res = posSalesService.settleDebt(
+          payload.saleId,
+          payload.amount,
+          payload.paymentMethod || 'Cash',
+          cashierId,
+          payload.notes,
+        );
+        return { success: true, data: res };
+      } catch (err) {
+        return {
+          success: false,
+          error: { code: 'POS_SETTLE_DEBT_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
 }

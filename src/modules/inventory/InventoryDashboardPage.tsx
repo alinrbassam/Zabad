@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useInventoryStore } from '@stores/useInventoryStore';
 import { Card } from '@components/ui/Card';
 import { Package, AlertTriangle, Clock, TrendingUp, DollarSign } from 'lucide-react';
+import { formatDateTime } from '@utils/date';
 
 export const InventoryDashboardPage: React.FC = () => {
   const { summary, loadSummary, movements, loadMovements } = useInventoryStore();
@@ -113,7 +114,7 @@ export const InventoryDashboardPage: React.FC = () => {
                     {m.movement_type}
                   </span>
                   <span className="text-[10px] text-slate-500">
-                    Product ID: {m.product_id} • {new Date(m.created_at).toLocaleString()}
+                    Product ID: {m.product_id} • {formatDateTime(m.created_at)}
                   </span>
                 </div>
               </div>

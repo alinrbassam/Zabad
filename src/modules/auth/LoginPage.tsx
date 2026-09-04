@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@stores/useAuthStore';
 import { useThemeStore } from '@stores/useThemeStore';
@@ -24,6 +24,49 @@ export const LoginPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isForgotOpen, setIsForgotOpen] = useState(false);
+  const [usersList, setUsersList] = useState<{ id: string; username: string; fullName: string }[]>([]);
+
+  const handleDevBypass = () => {
+    setAuth({
+      token: 'dev-token',
+      user: {
+        id: 'dev-admin-id',
+        username: 'admin',
+        email: 'admin@ghazal.com',
+        roleId: 'admin',
+        isActive: 1,
+        firstName: 'Dev',
+        lastName: 'Admin',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } as any,
+      role: { id: 'admin', name: 'Administrator' } as any,
+      permissions: ['*'],
+    });
+    navigate('/');
+  };
+
+  useEffect(() => {
+    if (window.api?.getUsersList) {
+      window.api.getUsersList().then((res) => {
+        if (res.success && res.data) {
+          const mapped = res.data.map((u: any) => ({
+            id: u.id,
+            username: u.username,
+            fullName: u.full_name || u.username,
+          }));
+          setUsersList(mapped);
+          if (mapped.length > 0 && !username) {
+            setUsername(mapped[0].username);
+          }
+        }
+      });
+    }
+
+    if (import.meta.env.DEV) {
+      handleDevBypass();
+    }
+  }, []);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,13 +123,17 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4 select-none">
       <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-2xl space-y-6">
         <div className="flex items-center justify-between border-b border-slate-700 pb-4">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 bg-sky-600 rounded-xl flex items-center justify-center text-white font-black text-lg">
-              RMS
+          <div className="flex items-center space-x-3 rtl:space-x-reverse">
+            <div className="h-10 w-10 bg-gradient-to-tr from-sky-500 via-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-cyan-500/25">
+              🐟
             </div>
             <div>
-              <h2 className="text-base font-bold text-white">RMS Enterprise</h2>
-              <span className="text-[10px] text-sky-400 font-medium">v1.0.0 Offline Desktop</span>
+              <h2 className="text-base font-black text-white tracking-wide">
+                {language === 'ar' ? 'نظام زَبَد للأسماك' : 'Zabad POS'}
+              </h2>
+              <span className="text-[10px] text-cyan-400 font-medium block">
+                {language === 'ar' ? 'نظام إدارة مبيعات الأسماك الطازجة' : 'Fresh Seafood Retail System'}
+              </span>
             </div>
           </div>
 
@@ -161,13 +208,23 @@ export const LoginPage: React.FC = () => {
           </form>
         ) : (
           <form onSubmit={handlePinLogin} className="space-y-4">
-            <Input
-              label="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Cashier username"
-              required
-            />
+            <div className="flex flex-col space-y-1">
+              <label className="text-xs font-semibold text-slate-400">
+                Select Cashier / User
+              </label>
+              <select
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-850 border border-slate-700 rounded-lg text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+              >
+                <option value="" disabled>-- Choose User --</option>
+                {usersList.map((u) => (
+                  <option key={u.id} value={u.username} className="bg-slate-800 text-slate-100">
+                    {u.fullName} ({u.username})
+                  </option>
+                ))}
+              </select>
+            </div>
             <Input
               label="Quick PIN Code (4-6 digits)"
               type="password"
@@ -184,8 +241,15 @@ export const LoginPage: React.FC = () => {
           </form>
         )}
 
-        <div className="text-[10px] text-center text-slate-500 border-t border-slate-700/50 pt-3">
-          Local SQLite Protected Operating System
+        <div className="text-[10px] text-center text-slate-500 border-t border-slate-700/50 pt-3 flex flex-col space-y-2 items-center">
+          <span>Local SQLite Protected Operating System</span>
+          <button
+            type="button"
+            onClick={handleDevBypass}
+            className="text-xs text-sky-400 hover:text-sky-300 hover:underline font-bold mt-1"
+          >
+            ⚡ Developer Auto-Login (Bypass Login)
+          </button>
         </div>
       </div>
 

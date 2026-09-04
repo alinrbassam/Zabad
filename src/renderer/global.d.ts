@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { WindowApi } from '../preload/api';
 
 declare global {
@@ -5,3 +6,4 @@ declare global {
     api: WindowApi;
   }
 }
+

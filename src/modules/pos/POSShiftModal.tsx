@@ -27,8 +27,9 @@ export const POSShiftModal: React.FC<Props> = ({ isOpen, onClose, onConfirm }) =
 
         <Card className="space-y-3">
           <Input
-            label="Opening Float Cash ($)"
+            label="Opening Float Cash (FCFA)"
             type="number"
+            step="any"
             value={openingCash}
             onChange={(e) => setOpeningCash(Number(e.target.value))}
             autoFocus

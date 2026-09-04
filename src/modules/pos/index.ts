@@ -1,12 +1,13 @@
 import { RMSModule } from '@shared/types/module';
 import { POSTerminalPage } from './POSTerminalPage';
 import { SalesHistoryPage } from './SalesHistoryPage';
+import { DebtsPage } from './DebtsPage';
 
 export const POSModule: RMSModule = {
   id: 'pos',
   name: 'POS Terminal & Sales',
   description:
-    'Fast barcode checkout terminal, receipt printing, held sales, cash drawer, and refunds.',
+    'Fast barcode checkout terminal, receipt printing, held sales, customer debts, and refunds.',
   version: '1.0.0',
   icon: 'ShoppingCart',
   routes: [
@@ -15,6 +16,12 @@ export const POSModule: RMSModule = {
       path: '/pos/sales',
       component: SalesHistoryPage,
       requiredPermission: 'pos.sales_history',
+      exact: true,
+    },
+    {
+      path: '/pos/debts',
+      component: DebtsPage,
+      requiredPermission: 'pos.checkout',
       exact: true,
     },
   ],
@@ -28,11 +35,19 @@ export const POSModule: RMSModule = {
       requiredPermission: 'pos.checkout',
     },
     {
+      id: 'pos-debts',
+      labelKey: 'pos_debts',
+      icon: 'HandCoins',
+      path: '/pos/debts',
+      order: 6,
+      requiredPermission: 'pos.checkout',
+    },
+    {
       id: 'pos-sales-history',
       labelKey: 'sales_history',
       icon: 'History',
       path: '/pos/sales',
-      order: 6,
+      order: 7,
       requiredPermission: 'pos.sales_history',
     },
   ],
@@ -49,10 +64,12 @@ export const POSModule: RMSModule = {
   translations: {
     en: {
       pos_terminal: 'POS Checkout',
+      pos_debts: 'Customer Debts',
       sales_history: 'Sales History',
     },
     ar: {
       pos_terminal: 'نقطة البيع',
+      pos_debts: 'سجل الديون (الآجل)',
       sales_history: 'سجل المبيعات',
     },
   },

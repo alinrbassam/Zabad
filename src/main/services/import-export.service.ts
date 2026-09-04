@@ -60,7 +60,7 @@ export class ImportExportService {
 
           // Resolve Category ID
           let category = categories.find(
-            (c) => c.name_en.toLowerCase() === row.categoryNameEn.toLowerCase(),
+            (c) => c.id === row.categoryNameEn || (row.categoryNameEn && c.name_en.toLowerCase() === row.categoryNameEn.toLowerCase()),
           );
           if (!category) {
             category = this.categoryRepo.createCategory({
@@ -71,7 +71,7 @@ export class ImportExportService {
           }
 
           // Resolve Unit ID
-          const unit = units.find((u) => u.code === row.baseUnitCode) || defaultUnit;
+          const unit = units.find((u) => u.id === row.baseUnitCode || u.code === row.baseUnitCode) || defaultUnit;
 
           this.productService.createProduct(
             {

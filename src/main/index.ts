@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import { createMainWindow } from './window';
 import { registerIpcHandlers } from './ipc';
 import { DatabaseConnection } from './database/connection';
@@ -9,10 +10,22 @@ import { migrationV4 } from './database/migrations/v4_purchasing';
 import { migrationV5 } from './database/migrations/v5_pos';
 import { migrationV6 } from './database/migrations/v6_reports';
 import { migrationV7 } from './database/migrations/v7_commercial';
+import { migrationV8, ensureBorrowColumns } from './database/migrations/v8_expenses_and_borrow';
+import path from 'path';
 import { logger } from './services/logger.service';
+import { DemoDataService } from './services/demo-data.service';
+
+app.setName('Zabad POS');
+try {
+  app.commandLine.appendSwitch('lang', 'en-GB');
+  const appData = app.getPath('appData');
+  app.setPath('userData', path.join(appData, 'Zabad POS'));
+} catch {
+  // non-electron or test runner fallback
+}
 
 app.whenReady().then(() => {
-  logger.info('App', 'Starting RMS Enterprise Desktop Application');
+  logger.info('App', 'Starting Zabad POS Seafood Desktop Application');
 
   try {
     const db = DatabaseConnection.getInstance().getDatabase();
@@ -25,14 +38,28 @@ app.whenReady().then(() => {
       migrationV5,
       migrationV6,
       migrationV7,
+      migrationV8,
     ]);
-    logger.info('App', 'Database migrations v2, v3, v4, v5, v6 & v7 executed successfully');
+    ensureBorrowColumns(db);
+    logger.info('App', 'Database migrations v2 through v8 executed successfully');
+
+    const demoService = new DemoDataService(db);
+    demoService.ensureZabadCatalog();
   } catch (err) {
-    logger.error('App', 'Failed initializing database migrations', err);
+    logger.error('App', 'Failed initializing database migrations or catalog', err);
   }
 
   registerIpcHandlers();
   createMainWindow();
+
+  // Check for auto-updates when running packaged app
+  if (app.isPackaged) {
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+    autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+      logger.warn('AutoUpdater', 'Check for updates failed', err);
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
