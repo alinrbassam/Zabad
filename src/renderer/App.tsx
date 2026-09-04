@@ -98,11 +98,18 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadConfig();
 
+    // Always reset to Cashier mode and navigate to /pos on app launch
+    useAuthStore.getState().setRoleMode('cashier');
+    if (!window.location.hash || window.location.hash === '#/' || !window.location.hash.startsWith('#/pos')) {
+      window.location.hash = '#/pos';
+    }
+
     if (import.meta.env.DEV) {
       setIsSetupComplete(true);
       useAuthStore.setState({
         isAuthenticated: true,
         isScreenLocked: false,
+        activeRoleMode: 'cashier',
       });
       return;
     }

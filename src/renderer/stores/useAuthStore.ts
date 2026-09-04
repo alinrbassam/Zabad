@@ -60,12 +60,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isScreenLocked: false,
   rememberedUsername: localStorage.getItem('rms_remembered_username') || '',
   inactivityTimeoutMinutes: 30,
-  activeRoleMode: (localStorage.getItem('zabad_role_mode') as 'cashier' | 'manager') || 'cashier',
+  activeRoleMode: 'cashier',
   isManagerUnlockModalOpen: false,
   managerPassword: localStorage.getItem('zabad_manager_password') || DEFAULT_MANAGER_PASSWORD,
 
   setRoleMode: (mode: 'cashier' | 'manager') => {
-    localStorage.setItem('zabad_role_mode', mode);
+    sessionStorage.setItem('zabad_role_mode', mode);
+    localStorage.removeItem('zabad_role_mode'); // Clear any legacy persisted role
     set({ activeRoleMode: mode });
   },
 
@@ -147,7 +148,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    localStorage.setItem('zabad_role_mode', 'cashier');
+    sessionStorage.removeItem('zabad_role_mode');
+    localStorage.removeItem('zabad_role_mode');
     set({
       activeRoleMode: 'cashier',
       isScreenLocked: false,
@@ -156,6 +158,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   checkSession: async () => {
+    sessionStorage.removeItem('zabad_role_mode');
+    localStorage.removeItem('zabad_role_mode');
+    set({ activeRoleMode: 'cashier' });
     get().loadManagerPassword().catch(() => {});
 
     const token = get().token;
