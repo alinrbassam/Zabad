@@ -14,18 +14,25 @@ export const LanguageSettings: React.FC = () => {
         Instant switching between English (LTR) and Arabic (RTL).
       </p>
 
-      <div className="flex space-x-4 max-w-sm">
+      <div className="grid grid-cols-3 gap-3 max-w-lg">
+        <Button
+          variant={language === 'fr' ? 'primary' : 'outline'}
+          onClick={() => setLanguage('fr')}
+          className="w-full"
+        >
+          Français (LTR)
+        </Button>
         <Button
           variant={language === 'en' ? 'primary' : 'outline'}
           onClick={() => setLanguage('en')}
-          className="flex-1"
+          className="w-full"
         >
           English (LTR)
         </Button>
         <Button
           variant={language === 'ar' ? 'primary' : 'outline'}
           onClick={() => setLanguage('ar')}
-          className="flex-1"
+          className="w-full"
         >
           العربية (RTL)
         </Button>

@@ -18,7 +18,7 @@ import { CloudSyncService } from './services/cloud-sync.service';
 
 app.setName('Zabad POS');
 try {
-  app.commandLine.appendSwitch('lang', 'en-GB');
+  app.commandLine.appendSwitch('lang', 'fr-FR');
   const appData = app.getPath('appData');
   app.setPath('userData', path.join(appData, 'Zabad POS'));
 } catch {

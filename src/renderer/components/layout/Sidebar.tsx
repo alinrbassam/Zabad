@@ -27,8 +27,19 @@ export const Sidebar: React.FC = () => {
   const { pathname } = useLocation();
   const { logout, user, activeRoleMode, setRoleMode } = useAuthStore();
 
+  const getLabel = (ar: string, en: string, fr: string) => {
+    if (language === 'ar') return ar;
+    if (language === 'fr') return fr;
+    return en;
+  };
+
   const handleLogout = async () => {
-    const msg = language === 'ar' ? 'هل أنت متأكد من تسجيل الخروج؟' : 'Are you sure you want to log out?';
+    const msg =
+      language === 'ar'
+        ? 'هل أنت متأكد من تسجيل الخروج؟'
+        : language === 'fr'
+        ? 'Êtes-vous sûr de vouloir vous déconnecter ?'
+        : 'Are you sure you want to log out?';
     if (confirm(msg)) {
       await logout();
     }
@@ -37,25 +48,25 @@ export const Sidebar: React.FC = () => {
   const navSections = [
     {
       id: 'sell',
-      label: language === 'ar' ? 'البيع (نقطة البيع)' : 'Sell (POS)',
+      label: getLabel('البيع (نقطة البيع)', 'Sell (POS)', 'Vente (Caisse)'),
       icon: ShoppingCart,
       color: 'text-sky-400',
       items: [
         {
           id: 'pos-terminal',
-          label: language === 'ar' ? 'نقطة البيع (الكاشير)' : 'POS Checkout',
+          label: getLabel('نقطة البيع (الكاشير)', 'POS Checkout', 'Caisse Enregistreuse'),
           icon: ShoppingCart,
           path: '/pos',
         },
         {
           id: 'pos-debts',
-          label: language === 'ar' ? 'سجل الديون (الآجل)' : 'Customer Debts',
+          label: getLabel('سجل الديون (الآجل)', 'Customer Debts', 'Dettes Clients (Crédit)'),
           icon: HandCoins,
           path: '/pos/debts',
         },
         {
           id: 'sales-history',
-          label: language === 'ar' ? 'سجل المبيعات والفواتير' : 'Sales History',
+          label: getLabel('سجل المبيعات والفواتير', 'Sales History', 'Historique des Ventes'),
           icon: History,
           path: '/pos/sales',
         },
@@ -63,19 +74,19 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'finance',
-      label: language === 'ar' ? 'المالية والمصاريف' : 'Finance & Expenses',
+      label: getLabel('المالية والمصاريف', 'Finance & Expenses', 'Finances & Dépenses'),
       icon: Receipt,
       color: 'text-rose-400',
       items: [
         {
           id: 'expenses',
-          label: language === 'ar' ? 'المصاريف التشغيلية' : 'Store Expenses',
+          label: getLabel('المصاريف التشغيلية', 'Store Expenses', 'Dépenses du Magasin'),
           icon: Receipt,
           path: '/expenses',
         },
         {
           id: 'financial-report',
-          label: language === 'ar' ? 'تقرير الأرباح والخسائر' : 'Financial P&L Report',
+          label: getLabel('تقرير الأرباح والخسائر', 'Financial P&L Report', 'Rapport Financier P&L'),
           icon: BarChart2,
           path: '/reports/financial',
         },
@@ -83,25 +94,25 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'buy',
-      label: language === 'ar' ? 'الشراء (المشتريات)' : 'Buy (Purchases)',
+      label: getLabel('الشراء (المشتريات)', 'Buy (Purchases)', 'Achats & Approvisionnement'),
       icon: Truck,
       color: 'text-emerald-400',
       items: [
         {
           id: 'direct-purchase',
-          label: language === 'ar' ? 'شراء مباشر (إدخال بضاعة)' : 'Direct Purchase',
+          label: getLabel('شراء مباشر (إدخال بضاعة)', 'Direct Purchase', 'Achat Direct / Entrée'),
           icon: Store,
           path: '/purchasing/direct',
         },
         {
           id: 'purchase-orders',
-          label: language === 'ar' ? 'فواتير وأوامر الشراء' : 'Purchase Orders',
+          label: getLabel('فواتير وأوامر الشراء', 'Purchase Orders', 'Bons de Commande'),
           icon: Truck,
           path: '/purchasing/orders',
         },
         {
           id: 'purchasing-history',
-          label: language === 'ar' ? 'سجل المشتريات' : 'Purchasing History',
+          label: getLabel('سجل المشتريات', 'Purchasing History', 'Historique des Achats'),
           icon: History,
           path: '/purchasing/history',
         },
@@ -109,37 +120,37 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'inventory',
-      label: language === 'ar' ? 'المخزون والمنتجات' : 'Inventory & Stock',
+      label: getLabel('المخزون والمنتجات', 'Inventory & Stock', 'Stock & Produits'),
       icon: Package,
       color: 'text-amber-400',
       items: [
         {
           id: 'suppliers',
-          label: language === 'ar' ? '1. الموردين (Suppliers)' : '1. Suppliers',
+          label: getLabel('1. الموردين (Suppliers)', '1. Suppliers', '1. Fournisseurs'),
           icon: Users,
           path: '/inventory/suppliers',
         },
         {
           id: 'categories',
-          label: language === 'ar' ? '2. الأقسام (Categories)' : '2. Categories',
+          label: getLabel('2. الأقسام (Categories)', '2. Categories', '2. Catégories'),
           icon: FolderTree,
           path: '/inventory/categories',
         },
         {
           id: 'product-new',
-          label: language === 'ar' ? '3. إضافة صنف جديد (Add Item)' : '3. Add New Item',
+          label: getLabel('3. إضافة صنف جديد (Add Item)', '3. Add New Item', '3. Ajouter un Produit'),
           icon: PlusCircle,
           path: '/inventory/products/new',
         },
         {
           id: 'products-list',
-          label: language === 'ar' ? '4. المخزون والمنتجات (Inventory)' : '4. Products & Stock',
+          label: getLabel('4. المخزون والمنتجات (Inventory)', '4. Products & Stock', '4. Produits & Stock'),
           icon: Package,
           path: '/inventory/products',
         },
         {
           id: 'adjustments',
-          label: language === 'ar' ? '5. جرد وتسوية المخزون (Adjustments)' : '5. Stock Adjustments',
+          label: getLabel('5. جرد وتسوية المخزون (Adjustments)', '5. Stock Adjustments', '5. Ajustements de Stock'),
           icon: Sliders,
           path: '/inventory/adjustments',
         },
@@ -192,12 +203,8 @@ export const Sidebar: React.FC = () => {
           </h2>
           <span className="text-[11px] text-cyan-400/90 font-medium block">
             {activeRoleMode === 'cashier'
-              ? language === 'ar'
-                ? 'وضع الكاشير (بيع فقط)'
-                : 'Cashier Mode (Sales Only)'
-              : language === 'ar'
-              ? 'وضع المدير (إدارة كاملة)'
-              : 'Manager Mode (Full Access)'}
+              ? getLabel('وضع الكاشير (بيع فقط)', 'Cashier Mode (Sales Only)', 'Mode Caisse (Vente Seule)')
+              : getLabel('وضع المدير (إدارة كاملة)', 'Manager Mode (Full Access)', 'Mode Gérant (Accès Complet)')}
           </span>
         </div>
       </div>
@@ -297,7 +304,7 @@ export const Sidebar: React.FC = () => {
         {/* Quick Role Switcher Button */}
         <div className="bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60 flex items-center justify-between">
           <span className="text-[11px] font-semibold text-slate-400 pl-1 rtl:pl-0 rtl:pr-1">
-            {language === 'ar' ? 'الوضع:' : 'Mode:'}
+            {getLabel('الوضع:', 'Mode:', 'Mode :')}
           </span>
           <button
             onClick={() => setRoleMode(activeRoleMode === 'cashier' ? 'manager' : 'cashier')}
@@ -308,12 +315,8 @@ export const Sidebar: React.FC = () => {
             }`}
           >
             {activeRoleMode === 'cashier'
-              ? language === 'ar'
-                ? '🛒 كاشير (تبديل للمدير)'
-                : '🛒 Cashier (Switch)'
-              : language === 'ar'
-              ? '👑 مدير (تبديل للكاشير)'
-              : '👑 Manager (Switch)'}
+              ? getLabel('🛒 كاشير (تبديل للمدير)', '🛒 Cashier (Switch)', '🛒 Caisse (Changer)')
+              : getLabel('👑 مدير (تبديل للكاشير)', '👑 Manager (Switch)', '👑 Gérant (Changer)')}
           </button>
         </div>
 
@@ -334,7 +337,7 @@ export const Sidebar: React.FC = () => {
           className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors"
         >
           <LogOut className="h-3.5 w-3.5" />
-          <span>{language === 'ar' ? 'تسجيل الخروج' : 'Logout'}</span>
+          <span>{getLabel('تسجيل الخروج', 'Logout', 'Déconnexion')}</span>
         </button>
       </div>
     </aside>

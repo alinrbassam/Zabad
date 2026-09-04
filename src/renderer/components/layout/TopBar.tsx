@@ -101,11 +101,16 @@ export const TopBar: React.FC = () => {
 
         {/* Language Switcher */}
         <button
-          onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
+          onClick={() => {
+            if (language === 'fr') setLanguage('en');
+            else if (language === 'en') setLanguage('ar');
+            else setLanguage('fr');
+          }}
           className="flex items-center space-x-1.5 rtl:space-x-reverse px-2.5 py-1.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-700 dark:text-slate-300 transition-colors"
+          title="Changer de langue / Switch Language"
         >
           <Globe className="h-3.5 w-3.5 text-sky-600" />
-          <span>{language === 'en' ? 'العربية' : 'English'}</span>
+          <span>{language === 'fr' ? 'Français' : language === 'en' ? 'English' : 'العربية'}</span>
         </button>
 
         <Notifications />

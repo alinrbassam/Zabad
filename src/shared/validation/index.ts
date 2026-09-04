@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const AppConfigSchema = z.object({
   theme: z.enum(['light', 'dark', 'system']),
-  language: z.enum(['en', 'ar']),
+  language: z.enum(['en', 'ar', 'fr']),
   currency: z.string().min(1),
   businessName: z.string().min(1),
   businessType: z.string().min(1),
@@ -32,7 +32,7 @@ export const OwnerPasswordSchema = z
   .regex(/[^A-Za-z0-9]/, 'Password must contain at least one special character');
 
 export const SetupWizardPayloadSchema = z.object({
-  language: z.enum(['en', 'ar']),
+  language: z.enum(['en', 'ar', 'fr']),
   theme: z.enum(['light', 'dark', 'system']),
   businessName: z.string().min(2, 'Business name is required'),
   businessType: z.enum([

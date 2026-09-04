@@ -1,5 +1,5 @@
 export type ThemeMode = 'light' | 'dark' | 'system';
-export type LanguageCode = 'en' | 'ar';
+export type LanguageCode = 'en' | 'ar' | 'fr';
 export type TextDirection = 'ltr' | 'rtl';
 
 export interface BaseEntity {

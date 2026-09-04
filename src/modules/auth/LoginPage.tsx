@@ -145,10 +145,15 @@ export const LoginPage: React.FC = () => {
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
-              onClick={() => setLanguage(language === 'en' ? 'ar' : 'en')}
-              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 text-xs font-bold"
+              onClick={() => {
+                if (language === 'fr') setLanguage('en');
+                else if (language === 'en') setLanguage('ar');
+                else setLanguage('fr');
+              }}
+              className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-700 text-xs font-bold uppercase"
+              title="Changer de langue / Switch Language"
             >
-              {language === 'en' ? 'AR' : 'EN'}
+              {language.toUpperCase()}
             </button>
           </div>
         </div>
