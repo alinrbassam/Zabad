@@ -20,6 +20,9 @@ import { useThemeStore } from './stores/useThemeStore';
 import { RouteDefinition } from '@shared/types/module';
 
 import { DashboardPage } from './pages/DashboardPage';
+import { ManagerPasswordModal } from './components/auth/ManagerPasswordModal';
+import { useLanguageStore } from './stores/useLanguageStore';
+import { Lock, ShieldAlert } from 'lucide-react';
 
 // Register core modules
 try {
@@ -39,8 +42,55 @@ try {
   // Modules already registered
 }
 
+const ManagerRouteGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { activeRoleMode, setManagerUnlockModalOpen } = useAuthStore();
+  const { language } = useLanguageStore();
+
+  if (activeRoleMode === 'cashier') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 space-y-4 select-none">
+        <div className="h-16 w-16 rounded-2xl bg-amber-500/15 text-amber-500 flex items-center justify-center">
+          <ShieldAlert className="h-8 w-8" />
+        </div>
+        <div className="max-w-md space-y-1">
+          <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            {language === 'ar'
+              ? 'هذه الصفحة تتطلب صلاحيات المدير'
+              : language === 'fr'
+              ? 'Accès Réservé au Gérant'
+              : 'Manager Access Required'}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {language === 'ar'
+              ? 'أنت حالياً في وضع الكاشير (المبيعات فقط). يرجى إدخال كلمة مرور المدير للمتابعة.'
+              : language === 'fr'
+              ? 'Vous êtes actuellement en Mode Caisse (vente seule). Veuillez entrer le mot de passe gérant.'
+              : 'You are currently in Cashier Mode (sales only). Please enter the manager password to continue.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setManagerUnlockModalOpen(true)}
+          className="flex items-center space-x-2 rtl:space-x-reverse px-5 py-2.5 bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-bold rounded-xl shadow-md shadow-sky-600/20 transition-all"
+        >
+          <Lock className="h-4 w-4" />
+          <span>
+            {language === 'ar'
+              ? 'إدخال كلمة مرور المدير'
+              : language === 'fr'
+              ? 'Déverrouiller le Mode Gérant'
+              : 'Unlock Manager Mode'}
+          </span>
+        </button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
 export const App: React.FC = () => {
-  const { isAuthenticated, isScreenLocked, checkSession, activeRoleMode } = useAuthStore();
+  const { checkSession, activeRoleMode } = useAuthStore();
   const { loadConfig } = useConfigStore();
   const { theme } = useThemeStore();
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
@@ -53,21 +103,6 @@ export const App: React.FC = () => {
       useAuthStore.setState({
         isAuthenticated: true,
         isScreenLocked: false,
-        user: {
-          id: 'dev-admin-id',
-          username: 'admin',
-          full_name: 'Store Manager',
-          email: 'admin@ghazal.com',
-          role_id: 'admin',
-          password_hash: '',
-          salt: '',
-          is_active: 1,
-          must_change_password: 0,
-          failed_login_attempts: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        permissions: ['*'],
       });
       return;
     }
@@ -75,18 +110,25 @@ export const App: React.FC = () => {
     checkSession();
 
     if (window.api?.checkSetup) {
-      window.api.checkSetup().then((res) => {
-        if (res.success && res.data) {
-          setIsSetupComplete(res.data.isSetupComplete);
-        } else {
+      window.api
+        .checkSetup()
+        .then((res) => {
+          if (res.success && res.data) {
+            setIsSetupComplete(res.data.isSetupComplete);
+          } else {
+            setIsSetupComplete(false);
+          }
+        })
+        .catch((err) => {
+          if (window.api?.writeLog) {
+            window.api.writeLog('error', 'App-CheckSetup', (err as Error).message, {
+              stack: (err as Error).stack,
+            });
+          }
           setIsSetupComplete(false);
-        }
-      }).catch((err) => {
-        if (window.api?.writeLog) {
-          window.api.writeLog('error', 'App-CheckSetup', (err as Error).message, { stack: (err as Error).stack });
-        }
-        setIsSetupComplete(false);
-      });
+        });
+    } else {
+      setIsSetupComplete(true);
     }
   }, [loadConfig, checkSession]);
 
@@ -111,25 +153,38 @@ export const App: React.FC = () => {
   }
 
   const SetupPage = SetupWizardModule.routes[0].component;
-  const LoginPage = AuthModule.routes[0].component;
   const allRoutes = moduleRegistry.getAllRoutes();
 
   return (
     <HashRouter>
       {!isSetupComplete ? (
         <SetupPage />
-      ) : !isAuthenticated || isScreenLocked ? (
-        <LoginPage />
       ) : (
         <NavigationLayout>
+          <ManagerPasswordModal />
           <Routes>
             <Route
               path="/"
               element={activeRoleMode === 'cashier' ? <Navigate to="/pos" replace /> : <DashboardPage />}
             />
-            {allRoutes.map((r: RouteDefinition) => (
-              <Route key={r.path} path={r.path} element={<r.component />} />
-            ))}
+            {allRoutes.map((r: RouteDefinition) => {
+              const isPosRoute = r.path.startsWith('/pos');
+              return (
+                <Route
+                  key={r.path}
+                  path={r.path}
+                  element={
+                    isPosRoute ? (
+                      <r.component />
+                    ) : (
+                      <ManagerRouteGuard>
+                        <r.component />
+                      </ManagerRouteGuard>
+                    )
+                  }
+                />
+              );
+            })}
             <Route path="*" element={<Navigate to={activeRoleMode === 'cashier' ? '/pos' : '/'} replace />} />
           </Routes>
         </NavigationLayout>

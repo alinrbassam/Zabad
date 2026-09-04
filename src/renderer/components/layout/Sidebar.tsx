@@ -25,7 +25,7 @@ import {
 export const Sidebar: React.FC = () => {
   const { t, language } = useLanguageStore();
   const { pathname } = useLocation();
-  const { logout, user, activeRoleMode, setRoleMode } = useAuthStore();
+  const { logout, user, activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
 
   const getLabel = (ar: string, en: string, fr: string) => {
     if (language === 'ar') return ar;
@@ -33,14 +33,18 @@ export const Sidebar: React.FC = () => {
     return en;
   };
 
+  const handleRoleSwitch = () => {
+    if (activeRoleMode === 'cashier') {
+      setManagerUnlockModalOpen(true);
+    } else {
+      setRoleMode('cashier');
+    }
+  };
+
   const handleLogout = async () => {
-    const msg =
-      language === 'ar'
-        ? 'هل أنت متأكد من تسجيل الخروج؟'
-        : language === 'fr'
-        ? 'Êtes-vous sûr de vouloir vous déconnecter ?'
-        : 'Are you sure you want to log out?';
-    if (confirm(msg)) {
+    if (activeRoleMode === 'manager') {
+      setRoleMode('cashier');
+    } else {
       await logout();
     }
   };
@@ -307,7 +311,7 @@ export const Sidebar: React.FC = () => {
             {getLabel('الوضع:', 'Mode:', 'Mode :')}
           </span>
           <button
-            onClick={() => setRoleMode(activeRoleMode === 'cashier' ? 'manager' : 'cashier')}
+            onClick={handleRoleSwitch}
             className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
               activeRoleMode === 'cashier'
                 ? 'bg-sky-600 text-white shadow-xs'
@@ -337,7 +341,11 @@ export const Sidebar: React.FC = () => {
           className="w-full flex items-center justify-center space-x-2 rtl:space-x-reverse px-3 py-2 rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors"
         >
           <LogOut className="h-3.5 w-3.5" />
-          <span>{getLabel('تسجيل الخروج', 'Logout', 'Déconnexion')}</span>
+          <span>
+            {activeRoleMode === 'manager'
+              ? getLabel('قفل والرجوع للكاشير', 'Lock to Cashier', 'Verrouiller en Caisse')
+              : getLabel('إعادة ضبط الكاشير', 'Reset Cashier Session', 'Réinitialiser la Caisse')}
+          </span>
         </button>
       </div>
     </aside>

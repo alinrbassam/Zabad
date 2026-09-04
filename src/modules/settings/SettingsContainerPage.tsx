@@ -11,6 +11,7 @@ import { PrinterSettings } from './sections/PrinterSettings';
 import { AboutSettings } from './sections/AboutSettings';
 import { CloudSyncSettings } from './sections/CloudSyncSettings';
 import { UpdateSettings } from './sections/UpdateSettings';
+import { SecuritySettings } from './sections/SecuritySettings';
 import { useLanguageStore } from '../../renderer/stores/useLanguageStore';
 import {
   Store,
@@ -24,6 +25,7 @@ import {
   History,
   Smartphone,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const SettingsContainerPage: React.FC = () => {
@@ -35,6 +37,16 @@ export const SettingsContainerPage: React.FC = () => {
       id: 'general',
       label: language === 'ar' ? 'بيانات المتجر والنشاط' : 'Store & Business',
       icon: Store,
+    },
+    {
+      id: 'security',
+      label:
+        language === 'ar'
+          ? 'كلمة مرور المدير والأمان'
+          : language === 'fr'
+          ? 'Mot de Passe Gérant & Sécurité'
+          : 'Manager Password & Security',
+      icon: ShieldCheck,
     },
     {
       id: 'language',
@@ -92,6 +104,8 @@ export const SettingsContainerPage: React.FC = () => {
     switch (activeSection) {
       case 'general':
         return <GeneralSettings />;
+      case 'security':
+        return <SecuritySettings />;
       case 'language':
         return <LanguageSettings />;
       case 'regional':

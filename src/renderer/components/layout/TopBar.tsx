@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../stores/useThemeStore';
 import { useLanguageStore } from '../../stores/useLanguageStore';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -10,10 +10,9 @@ import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check } f
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
   const { theme, setTheme } = useThemeStore();
   const { language, setLanguage, t } = useLanguageStore();
-  const { activeRoleMode, setRoleMode } = useAuthStore();
+  const { activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
   const langRef = React.useRef<HTMLDivElement>(null);
@@ -29,9 +28,10 @@ export const TopBar: React.FC = () => {
   }, []);
 
   const handleRoleToggle = () => {
-    const nextMode = activeRoleMode === 'cashier' ? 'manager' : 'cashier';
-    setRoleMode(nextMode);
-    if (nextMode === 'cashier' && (location.pathname === '/' || !location.pathname.startsWith('/pos'))) {
+    if (activeRoleMode === 'cashier') {
+      setManagerUnlockModalOpen(true);
+    } else {
+      setRoleMode('cashier');
       navigate('/pos');
     }
   };
@@ -57,19 +57,35 @@ export const TopBar: React.FC = () => {
           }`}
           title={
             activeRoleMode === 'cashier'
-              ? 'Click to switch to Manager Mode'
+              ? language === 'fr'
+                ? 'Cliquer pour déverrouiller le Mode Gérant'
+                : 'Click to switch to Manager Mode'
+              : language === 'fr'
+              ? 'Cliquer pour passer en Mode Caisse'
               : 'Click to switch to Cashier Mode'
           }
         >
           {activeRoleMode === 'cashier' ? (
             <>
               <ShoppingCart className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" />
-              <span>{language === 'ar' ? 'وضع الكاشير (بيع فقط)' : 'Cashier (Sell Only)'}</span>
+              <span>
+                {language === 'ar'
+                  ? 'وضع الكاشير (بيع فقط)'
+                  : language === 'fr'
+                  ? 'Caisse (Vente Seule)'
+                  : 'Cashier (Sell Only)'}
+              </span>
             </>
           ) : (
             <>
               <Shield className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>{language === 'ar' ? 'وضع المدير (إدارة وشراء)' : 'Manager (Full Access)'}</span>
+              <span>
+                {language === 'ar'
+                  ? 'وضع المدير (إدارة وشراء)'
+                  : language === 'fr'
+                  ? 'Gérant (Accès Complet)'
+                  : 'Manager (Full Access)'}
+              </span>
             </>
           )}
         </button>
