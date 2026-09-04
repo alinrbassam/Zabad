@@ -19,7 +19,7 @@ import {
   PackageX,
   Clock,
 } from 'lucide-react';
-import { StoreSnapshot, defaultDemoSnapshot } from '../lib/storage';
+import { StoreSnapshot, defaultDemoSnapshot } from '@/lib/storage';
 
 const OWNER_PIN = process.env.NEXT_PUBLIC_DASHBOARD_PIN || '1234';
 

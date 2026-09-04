@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getLatestSnapshot } from '../../../lib/storage';
+import { getLatestSnapshot } from '@/lib/storage';
 
 export const dynamic = 'force-dynamic';
 
