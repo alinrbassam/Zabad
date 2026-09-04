@@ -62,16 +62,17 @@ app.whenReady().then(() => {
     });
   }
 
-  // Background cloud sync for mobile dashboard (runs every 5 mins if enabled)
+  // Background cloud sync for mobile dashboard (runs on startup, every 3 mins, and on quit)
+  let cloudSyncInstance: CloudSyncService | null = null;
   try {
     const db = DatabaseConnection.getInstance().getDatabase();
-    const cloudSync = new CloudSyncService(db);
+    cloudSyncInstance = new CloudSyncService(db);
     setTimeout(() => {
-      cloudSync.sync().catch(() => {});
-    }, 10000);
+      cloudSyncInstance?.sync().catch(() => {});
+    }, 3000);
     setInterval(() => {
-      cloudSync.sync().catch(() => {});
-    }, 5 * 60 * 1000);
+      cloudSyncInstance?.sync().catch(() => {});
+    }, 3 * 60 * 1000);
   } catch (err) {
     logger.warn('CloudSync', 'Failed initializing background cloud sync', err);
   }
@@ -79,6 +80,22 @@ app.whenReady().then(() => {
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createMainWindow();
+    }
+  });
+
+  // Automatically flush final store snapshot to cloud before closing
+  let isQuitting = false;
+  app.on('before-quit', (e) => {
+    if (!isQuitting && cloudSyncInstance) {
+      isQuitting = true;
+      e.preventDefault();
+      logger.info('App', 'Executing closing sync to cloud before app quit...');
+      cloudSyncInstance
+        .sync()
+        .catch((err) => logger.warn('CloudSync', 'Closing sync failed', err))
+        .finally(() => {
+          app.quit();
+        });
     }
   });
 });

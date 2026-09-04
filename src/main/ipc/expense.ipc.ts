@@ -3,11 +3,13 @@ import Database from 'better-sqlite3';
 import { IPC_CHANNELS } from '../../shared/ipc/channels';
 import { ApiResponse } from '../../shared/types';
 import { ExpenseService } from '../services/expense.service';
+import { CloudSyncService } from '../services/cloud-sync.service';
 import { ExpenseSchema } from '../../shared/validation';
 import { logger } from '../services/logger.service';
 
 export function registerExpenseIpcHandlers(db: Database.Database): void {
   const expenseService = new ExpenseService(db);
+  const cloudSync = new CloudSyncService(db);
 
   ipcMain.handle(
     IPC_CHANNELS.EXPENSES_LIST,
@@ -34,6 +36,7 @@ export function registerExpenseIpcHandlers(db: Database.Database): void {
       try {
         const parsed = ExpenseSchema.parse(payload);
         const res = expenseService.createExpense(parsed, userId);
+        cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after expense creation failed', err));
         return { success: true, data: res };
       } catch (err) {
         logger.error('ExpenseIPC', 'Failed to create expense', err);
@@ -50,6 +53,7 @@ export function registerExpenseIpcHandlers(db: Database.Database): void {
     async (_, id: string, userId?: string): Promise<ApiResponse> => {
       try {
         const res = expenseService.deleteExpense(id, userId);
+        cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after expense deletion failed', err));
         return { success: true, data: res };
       } catch (err) {
         logger.error('ExpenseIPC', 'Failed to delete expense', err);
