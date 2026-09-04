@@ -63,6 +63,9 @@ export interface StoreSyncSnapshot {
   }>;
 }
 
+export const DEFAULT_SYNC_URL = 'https://zabad.vercel.app/api/sync';
+export const DEFAULT_SYNC_KEY = 'zabad-secret-key-2026';
+
 export class CloudSyncService {
   private db: Database.Database;
   private settingsRepo: SettingsRepository;
@@ -86,9 +89,9 @@ export class CloudSyncService {
     const settings = this.settingsRepo.getSettingsByCategory(bizId, 'cloud_sync');
 
     return {
-      enabled: settings.cloud_sync_enabled === 'true',
-      syncUrl: settings.cloud_sync_url || '',
-      syncKey: settings.cloud_sync_key || '',
+      enabled: settings.cloud_sync_enabled !== 'false',
+      syncUrl: settings.cloud_sync_url || DEFAULT_SYNC_URL,
+      syncKey: settings.cloud_sync_key || DEFAULT_SYNC_KEY,
       lastSyncAt: settings.cloud_sync_last_at || null,
       lastStatus: settings.cloud_sync_last_status || null,
     };
