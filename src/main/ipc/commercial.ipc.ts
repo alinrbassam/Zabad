@@ -6,6 +6,7 @@ import { LicensingService } from '../services/licensing.service';
 import { BackupService } from '../services/backup.service';
 import { MaintenanceService } from '../services/maintenance.service';
 import { UpdaterService } from '../services/updater.service';
+import { CloudSyncService } from '../services/cloud-sync.service';
 import { logger } from '../services/logger.service';
 
 export function registerCommercialIpcHandlers(db: Database.Database): void {
@@ -13,6 +14,7 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
   const backupService = new BackupService(db);
   const maintenanceService = new MaintenanceService(db);
   const updaterService = new UpdaterService();
+  const cloudSyncService = new CloudSyncService(db);
 
   // Licensing
   ipcMain.handle(IPC_CHANNELS.LICENSING_GET_DEVICE_ID, async (): Promise<ApiResponse<string>> => {
@@ -86,6 +88,43 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
       return { success: true, data: res };
     } catch (err) {
       return { success: false, error: { code: 'UPDATER_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  // Cloud Sync & Mobile Dashboard Bridge
+  ipcMain.handle(IPC_CHANNELS.CLOUD_GET_CONFIG, async (): Promise<ApiResponse> => {
+    try {
+      const config = cloudSyncService.getSyncConfig();
+      return { success: true, data: config };
+    } catch (err) {
+      return { success: false, error: { code: 'CLOUD_CONFIG_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CLOUD_UPDATE_CONFIG, async (_, payload: { enabled: boolean; syncUrl: string; syncKey: string }): Promise<ApiResponse> => {
+    try {
+      cloudSyncService.updateSyncConfig(payload);
+      return { success: true, data: true };
+    } catch (err) {
+      return { success: false, error: { code: 'CLOUD_UPDATE_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CLOUD_SYNC_NOW, async (): Promise<ApiResponse> => {
+    try {
+      const result = await cloudSyncService.sync();
+      return { success: result.success, data: result };
+    } catch (err) {
+      return { success: false, error: { code: 'CLOUD_SYNC_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.CLOUD_GET_SNAPSHOT, async (): Promise<ApiResponse> => {
+    try {
+      const snapshot = cloudSyncService.buildSnapshot();
+      return { success: true, data: snapshot };
+    } catch (err) {
+      return { success: false, error: { code: 'CLOUD_SNAPSHOT_ERROR', message: (err as Error).message } };
     }
   });
 }

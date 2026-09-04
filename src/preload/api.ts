@@ -135,6 +135,12 @@ const IPC_CHANNELS = {
   EXPENSES_CREATE: 'expenses:create',
   EXPENSES_DELETE: 'expenses:delete',
   EXPENSES_SUMMARY: 'expenses:summary',
+
+  // Cloud Sync Channels
+  CLOUD_SYNC_NOW: 'cloud:sync_now',
+  CLOUD_GET_CONFIG: 'cloud:get_config',
+  CLOUD_UPDATE_CONFIG: 'cloud:update_config',
+  CLOUD_GET_SNAPSHOT: 'cloud:get_snapshot',
 } as const;
 import {
   ApiResponse,
@@ -523,6 +529,25 @@ export const api = {
       byCategory: { category: string; total: number; count: number }[];
     }>
   > => ipcRenderer.invoke(IPC_CHANNELS.EXPENSES_SUMMARY, startDate, endDate),
+
+  // Cloud Sync API
+  getCloudSyncConfig: (): Promise<ApiResponse<{
+    enabled: boolean;
+    syncUrl: string;
+    syncKey: string;
+    lastSyncAt: string | null;
+    lastStatus: string | null;
+  }>> => ipcRenderer.invoke(IPC_CHANNELS.CLOUD_GET_CONFIG),
+  updateCloudSyncConfig: (config: {
+    enabled: boolean;
+    syncUrl: string;
+    syncKey: string;
+  }): Promise<ApiResponse<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUD_UPDATE_CONFIG, config),
+  syncCloudNow: (): Promise<ApiResponse<{ success: boolean; message: string; timestamp?: string }>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUD_SYNC_NOW),
+  getCloudSnapshot: (): Promise<ApiResponse<any>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CLOUD_GET_SNAPSHOT),
 };
 
 export type WindowApi = typeof api;

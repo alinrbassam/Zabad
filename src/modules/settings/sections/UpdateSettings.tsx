@@ -43,20 +43,33 @@ export const UpdateSettings: React.FC = () => {
           </div>
 
           {checked && updateStatus?.releaseNotes && (
-            <div className="p-3 bg-slate-900 text-slate-200 text-xs rounded-xl font-mono">
+            <div className="p-3 bg-slate-900 text-slate-200 text-xs rounded-xl font-mono whitespace-pre-wrap">
               {updateStatus.releaseNotes}
             </div>
           )}
 
-          <div className="flex justify-end">
-            <Button
-              onClick={handleCheck}
-              isLoading={isLoading}
-              className="flex items-center space-x-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              <span>Check for Updates Now</span>
-            </Button>
+          <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500">
+            <span>Repository: <strong className="text-slate-700 dark:text-slate-300">alinrbassam/Zabad</strong></span>
+            <div className="flex gap-2">
+              {updateStatus?.hasUpdate && updateStatus.downloadUrl && (
+                <a
+                  href={updateStatus.downloadUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium inline-flex items-center gap-1 transition-colors"
+                >
+                  Download v{updateStatus.latestVersion}
+                </a>
+              )}
+              <Button
+                onClick={handleCheck}
+                isLoading={isLoading}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Check for Updates Now</span>
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

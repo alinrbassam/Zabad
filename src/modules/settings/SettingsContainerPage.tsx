@@ -9,6 +9,8 @@ import { TaxSettings } from './sections/TaxSettings';
 import { BackupSettings } from './sections/BackupSettings';
 import { PrinterSettings } from './sections/PrinterSettings';
 import { AboutSettings } from './sections/AboutSettings';
+import { CloudSyncSettings } from './sections/CloudSyncSettings';
+import { UpdateSettings } from './sections/UpdateSettings';
 import { useLanguageStore } from '../../renderer/stores/useLanguageStore';
 import {
   Store,
@@ -20,6 +22,8 @@ import {
   HardDrive,
   Printer,
   History,
+  Smartphone,
+  Sparkles,
 } from 'lucide-react';
 
 export const SettingsContainerPage: React.FC = () => {
@@ -68,6 +72,16 @@ export const SettingsContainerPage: React.FC = () => {
       icon: HardDrive,
     },
     {
+      id: 'cloud_sync',
+      label: language === 'ar' ? 'تطبيق الموبايل والسحابة' : 'Mobile App & Cloud',
+      icon: Smartphone,
+    },
+    {
+      id: 'updates',
+      label: language === 'ar' ? 'تحديثات النظام' : 'Software Updates',
+      icon: Sparkles,
+    },
+    {
       id: 'changes',
       label: language === 'ar' ? 'سجل التعديلات' : 'System Changes Log',
       icon: History,
@@ -92,6 +106,10 @@ export const SettingsContainerPage: React.FC = () => {
         return <AppearanceSettings />;
       case 'backup':
         return <BackupSettings />;
+      case 'cloud_sync':
+        return <CloudSyncSettings />;
+      case 'updates':
+        return <UpdateSettings />;
       case 'changes':
         return <AboutSettings />;
       default:

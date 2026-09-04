@@ -14,6 +14,7 @@ import { migrationV8, ensureBorrowColumns } from './database/migrations/v8_expen
 import path from 'path';
 import { logger } from './services/logger.service';
 import { DemoDataService } from './services/demo-data.service';
+import { CloudSyncService } from './services/cloud-sync.service';
 
 app.setName('Zabad POS');
 try {
@@ -59,6 +60,20 @@ app.whenReady().then(() => {
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {
       logger.warn('AutoUpdater', 'Check for updates failed', err);
     });
+  }
+
+  // Background cloud sync for mobile dashboard (runs every 5 mins if enabled)
+  try {
+    const db = DatabaseConnection.getInstance().getDatabase();
+    const cloudSync = new CloudSyncService(db);
+    setTimeout(() => {
+      cloudSync.sync().catch(() => {});
+    }, 10000);
+    setInterval(() => {
+      cloudSync.sync().catch(() => {});
+    }, 5 * 60 * 1000);
+  } catch (err) {
+    logger.warn('CloudSync', 'Failed initializing background cloud sync', err);
   }
 
   app.on('activate', () => {

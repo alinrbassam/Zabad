@@ -46,6 +46,7 @@ interface CommercialState {
     currentVersion: string;
     latestVersion: string;
     releaseNotes?: string;
+    downloadUrl?: string;
   } | null;
   isLoading: boolean;
   error: string | null;

@@ -133,6 +133,12 @@ export const IPC_CHANNELS = {
   EXPENSES_CREATE: 'expenses:create',
   EXPENSES_DELETE: 'expenses:delete',
   EXPENSES_SUMMARY: 'expenses:summary',
+
+  // Cloud Sync Channels
+  CLOUD_SYNC_NOW: 'cloud:sync_now',
+  CLOUD_GET_CONFIG: 'cloud:get_config',
+  CLOUD_UPDATE_CONFIG: 'cloud:update_config',
+  CLOUD_GET_SNAPSHOT: 'cloud:get_snapshot',
 } as const;
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
