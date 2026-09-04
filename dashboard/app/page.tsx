@@ -185,7 +185,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="text-[11px] text-slate-500 text-center">
-          Default PIN: <span className="font-mono text-slate-400 font-bold">1234</span>
+          Secured for Zabad Seafood Management
         </div>
       </div>
     );
