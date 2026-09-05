@@ -32,7 +32,6 @@ export function createMainWindow(): BrowserWindow {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    mainWindow.webContents.openDevTools();
   });
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
