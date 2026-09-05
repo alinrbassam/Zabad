@@ -13,6 +13,7 @@ publish:
   repo: Zabad
 
 win:
+  icon: build/icon.ico
   forceCodeSigning: false
   target:
     - target: nsis

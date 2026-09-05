@@ -9,8 +9,12 @@ export function createMainWindow(): BrowserWindow {
   logger.info('MainWindow', `Preload path: ${preloadPath}`);
   logger.info('MainWindow', `Preload path exists: ${fs.existsSync(preloadPath)}`);
 
+  const iconPath = path.join(__dirname, '../../build/icon.png');
+  const icon = fs.existsSync(iconPath) ? iconPath : undefined;
+
   const mainWindow = new BrowserWindow({
     title: 'نظام زَبَد - Zabad POS',
+    icon,
     width: 1280,
     height: 800,
     minWidth: 1024,
