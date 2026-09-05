@@ -24,13 +24,14 @@ describe('LicensingService & Device Activation', () => {
     licensingService = new LicensingService(mockDb as unknown as Database.Database);
   });
 
-  it('should generate a 16-character alphanumeric device fingerprint', () => {
+  it('should generate a formatted alphanumeric device fingerprint', () => {
     const fingerprint = licensingService.getDeviceFingerprint();
     expect(fingerprint).toBeDefined();
-    expect(fingerprint.length).toBe(16);
+    const normalized = licensingService.normalizeDeviceId(fingerprint);
+    expect(normalized.length).toBe(16);
   });
 
-  it('should activate a valid signed license payload', () => {
+  it('should activate a valid license payload', () => {
     const deviceId = licensingService.getDeviceFingerprint();
     const payload = JSON.stringify({
       customerName: 'Test Retail',
@@ -43,5 +44,17 @@ describe('LicensingService & Device Activation', () => {
     const activated = licensingService.activateLicensePayload(payload);
     expect(activated.customerName).toBe('Test Retail');
     expect(activated.status).toBe('Active');
+  });
+
+  it('should reject a license payload with mismatched device ID', () => {
+    const payload = JSON.stringify({
+      customerName: 'Fraudulent User',
+      businessName: 'Fake LLC',
+      deviceId: 'WRONG-DEVICE-9999',
+      licenseType: 'Lifetime',
+      enabledModules: ['pos'],
+    });
+
+    expect(() => licensingService.activateLicensePayload(payload)).toThrow(/Device ID mismatch/i);
   });
 });

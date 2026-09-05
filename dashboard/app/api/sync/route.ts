@@ -24,6 +24,23 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Check if device is in revoked list
+    const deviceIdHeader = req.headers.get('x-device-id') || '';
+    const cleanDeviceId = deviceIdHeader.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    const revokedList = (process.env.REVOKED_DEVICES || '')
+      .split(',')
+      .map((s) => s.replace(/[^A-Z0-9]/gi, '').toUpperCase())
+      .filter(Boolean);
+
+    if (cleanDeviceId && revokedList.includes(cleanDeviceId)) {
+      return NextResponse.json({
+        success: true,
+        licenseRevoked: true,
+        message: 'This device license has been revoked by the administrator.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     await saveSnapshot(payload);
 
     return NextResponse.json({

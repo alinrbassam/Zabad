@@ -84,3 +84,8 @@ Thumbs.db
 *.msi
 *.exe
 
+# Licensing Secrets
+crypto-keys/private.key
+*.zabad
+
+

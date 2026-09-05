@@ -1,4 +1,5 @@
-import { ipcMain } from 'electron';
+import { ipcMain, dialog } from 'electron';
+import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import { IPC_CHANNELS } from '../../shared/ipc/channels';
 import { ApiResponse } from '../../shared/types';
@@ -31,6 +32,29 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
       return { success: true, data: res };
     } catch (err) {
       return { success: false, error: { code: 'LICENSE_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.LICENSING_SELECT_FILE, async (): Promise<ApiResponse<string | null>> => {
+    try {
+      const { canceled, filePaths } = await dialog.showOpenDialog({
+        title: 'Sélectionner le fichier de licence Zabad (.zabad)',
+        filters: [
+          { name: 'Licence Zabad (*.zabad)', extensions: ['zabad'] },
+          { name: 'Fichiers JSON (*.json, *.rms)', extensions: ['json', 'rms'] },
+          { name: 'Tous les fichiers', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (canceled || filePaths.length === 0) {
+        return { success: true, data: null };
+      }
+
+      const content = fs.readFileSync(filePaths[0], 'utf8');
+      return { success: true, data: content };
+    } catch (err) {
+      return { success: false, error: { code: 'FILE_READ_ERROR', message: (err as Error).message } };
     }
   });
 

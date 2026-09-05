@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { moduleRegistry } from '../modules/registry';
 import { SetupWizardModule } from '../modules/setup-wizard';
@@ -21,6 +21,7 @@ import { RouteDefinition } from '@shared/types/module';
 
 import { DashboardPage } from './pages/DashboardPage';
 import { ManagerPasswordModal } from './components/auth/ManagerPasswordModal';
+import { ActivationScreen } from './components/auth/ActivationScreen';
 import { useLanguageStore } from './stores/useLanguageStore';
 import { Lock, ShieldAlert } from 'lucide-react';
 
@@ -94,9 +95,28 @@ export const App: React.FC = () => {
   const { loadConfig } = useConfigStore();
   const { theme } = useThemeStore();
   const [isSetupComplete, setIsSetupComplete] = useState<boolean | null>(null);
+  const [isLicenseValid, setIsLicenseValid] = useState<boolean | null>(null);
+
+  const checkLicense = useCallback(async () => {
+    if (window.api?.getActiveLicense) {
+      try {
+        const res = await window.api.getActiveLicense();
+        if (res.success && res.data && (res.data as any).status === 'Active') {
+          setIsLicenseValid(true);
+        } else {
+          setIsLicenseValid(false);
+        }
+      } catch {
+        setIsLicenseValid(false);
+      }
+    } else {
+      setIsLicenseValid(true);
+    }
+  }, []);
 
   useEffect(() => {
     loadConfig();
+    checkLicense();
 
     // Always reset to Cashier mode and navigate to /pos on app launch
     useAuthStore.getState().setRoleMode('cashier');
@@ -137,7 +157,7 @@ export const App: React.FC = () => {
     } else {
       setIsSetupComplete(true);
     }
-  }, [loadConfig, checkSession]);
+  }, [loadConfig, checkSession, checkLicense]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -148,7 +168,7 @@ export const App: React.FC = () => {
     }
   }, [theme]);
 
-  if (isSetupComplete === null) {
+  if (isLicenseValid === null || isSetupComplete === null) {
     return (
       <div className="flex h-screen items-center justify-center bg-slate-900 text-white font-sans">
         <div className="flex flex-col items-center space-y-4">
@@ -157,6 +177,10 @@ export const App: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  if (isLicenseValid === false) {
+    return <ActivationScreen onActivated={checkLicense} />;
   }
 
   const SetupPage = SetupWizardModule.routes[0].component;

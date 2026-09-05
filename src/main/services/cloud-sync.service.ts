@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import { logger } from './logger.service';
 import { SettingsRepository } from '../database/repositories/settings.repository';
 import { BusinessRepository } from '../database/repositories/business.repository';
+import { LicensingService } from './licensing.service';
 
 export interface StoreSyncSnapshot {
   storeName: string;
@@ -70,11 +71,13 @@ export class CloudSyncService {
   private db: Database.Database;
   private settingsRepo: SettingsRepository;
   private businessRepo: BusinessRepository;
+  private licensingService: LicensingService;
 
   constructor(db: Database.Database) {
     this.db = db;
     this.settingsRepo = new SettingsRepository(db);
     this.businessRepo = new BusinessRepository(db);
+    this.licensingService = new LicensingService(db);
   }
 
   public getSyncConfig(): {
@@ -322,13 +325,15 @@ export class CloudSyncService {
 
     try {
       const snapshot = this.buildSnapshot();
-      logger.info('CloudSync', `Sending store snapshot to ${config.syncUrl}`);
+      const currentDeviceId = this.licensingService.getDeviceFingerprint();
+      logger.info('CloudSync', `Sending store snapshot to ${config.syncUrl} (Device: ${currentDeviceId})`);
 
       const response = await fetch(config.syncUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-sync-key': config.syncKey,
+          'x-device-id': currentDeviceId,
         },
         body: JSON.stringify(snapshot),
       });
@@ -336,6 +341,12 @@ export class CloudSyncService {
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
         throw new Error(`Sync server responded with HTTP ${response.status}: ${errorText || response.statusText}`);
+      }
+
+      const responseData = (await response.json().catch(() => ({}))) as any;
+      if (responseData && responseData.licenseRevoked) {
+        logger.warn('CloudSync', 'License has been revoked by cloud server');
+        this.licensingService.revokeLicense();
       }
 
       const now = new Date().toISOString();

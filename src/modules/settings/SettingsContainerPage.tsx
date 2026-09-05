@@ -12,6 +12,7 @@ import { AboutSettings } from './sections/AboutSettings';
 import { CloudSyncSettings } from './sections/CloudSyncSettings';
 import { UpdateSettings } from './sections/UpdateSettings';
 import { SecuritySettings } from './sections/SecuritySettings';
+import { LicensingSettings } from './sections/LicensingSettings';
 import { useLanguageStore } from '../../renderer/stores/useLanguageStore';
 import {
   Store,
@@ -26,6 +27,7 @@ import {
   Smartphone,
   Sparkles,
   ShieldCheck,
+  Key,
 } from 'lucide-react';
 
 export const SettingsContainerPage: React.FC = () => {
@@ -47,6 +49,16 @@ export const SettingsContainerPage: React.FC = () => {
           ? 'Mot de Passe Gérant & Sécurité'
           : 'Manager Password & Security',
       icon: ShieldCheck,
+    },
+    {
+      id: 'licensing',
+      label:
+        language === 'ar'
+          ? 'ترخيص وتنشيط النظام'
+          : language === 'fr'
+          ? 'Licence & Activation'
+          : 'License & Activation',
+      icon: Key,
     },
     {
       id: 'language',
@@ -106,6 +118,8 @@ export const SettingsContainerPage: React.FC = () => {
         return <GeneralSettings />;
       case 'security':
         return <SecuritySettings />;
+      case 'licensing':
+        return <LicensingSettings />;
       case 'language':
         return <LanguageSettings />;
       case 'regional':

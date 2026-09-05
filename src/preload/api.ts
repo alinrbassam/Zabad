@@ -113,6 +113,7 @@ const IPC_CHANNELS = {
   LICENSING_GET_DEVICE_ID: 'licensing:get_device_id',
   LICENSING_GET_INFO: 'licensing:get_info',
   LICENSING_ACTIVATE_FILE: 'licensing:activate_file',
+  LICENSING_SELECT_FILE: 'licensing:select_file',
 
   BACKUP_LIST: 'backup:list',
   BACKUP_CREATE_FULL: 'backup:create_full',
@@ -457,6 +458,8 @@ export const api = {
     ipcRenderer.invoke(IPC_CHANNELS.LICENSING_GET_INFO),
   activateLicenseFile: (payloadStr: string): Promise<ApiResponse<unknown>> =>
     ipcRenderer.invoke(IPC_CHANNELS.LICENSING_ACTIVATE_FILE, payloadStr),
+  selectLicenseFile: (): Promise<ApiResponse<string | null>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.LICENSING_SELECT_FILE),
 
   getBackupsList: (): Promise<ApiResponse<unknown[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.BACKUP_LIST),

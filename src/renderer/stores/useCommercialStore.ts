@@ -54,6 +54,7 @@ interface CommercialState {
   loadDeviceId: () => Promise<void>;
   loadActiveLicense: () => Promise<void>;
   activateLicense: (payloadStr: string) => Promise<boolean>;
+  selectAndActivateLicense: () => Promise<boolean>;
   loadBackups: () => Promise<void>;
   createFullBackup: (folder: string) => Promise<boolean>;
   createAutoBackup: (folder: string, retention?: number) => Promise<boolean>;
@@ -109,6 +110,26 @@ export const useCommercialStore = create<CommercialState>((set, get) => ({
         } else {
           set({ error: res.error?.message || 'Activation failed' });
         }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  selectAndActivateLicense: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.selectLicenseFile) {
+        const fileRes = await window.api.selectLicenseFile();
+        if (!fileRes.success || !fileRes.data) {
+          set({ isLoading: false });
+          return false;
+        }
+        return await get().activateLicense(fileRes.data);
       }
       return false;
     } catch (err) {
