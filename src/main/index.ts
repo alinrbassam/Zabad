@@ -16,6 +16,8 @@ import { logger } from './services/logger.service';
 import { DemoDataService } from './services/demo-data.service';
 import { CloudSyncService } from './services/cloud-sync.service';
 
+import { IPC_CHANNELS } from '../shared/ipc/channels';
+
 app.setName('Zabad POS');
 try {
   app.commandLine.appendSwitch('lang', 'fr-FR');
@@ -42,6 +44,7 @@ app.whenReady().then(() => {
       migrationV8,
     ]);
     ensureBorrowColumns(db);
+
     logger.info('App', 'Database migrations v2 through v8 executed successfully');
 
     const demoService = new DemoDataService(db);
@@ -51,19 +54,56 @@ app.whenReady().then(() => {
   }
 
   registerIpcHandlers();
-  createMainWindow();
+  const mainWindow = createMainWindow();
 
   // Check for auto-updates when running packaged app
   if (app.isPackaged) {
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 
+    autoUpdater.on('checking-for-update', () => {
+      logger.info('AutoUpdater', 'Checking for update...');
+      mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
+        status: 'checking',
+      });
+    });
+
     autoUpdater.on('update-available', (info) => {
       logger.info('AutoUpdater', `Update available: ${info.version}`);
+      mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
+        status: 'available',
+        version: info.version,
+        releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined,
+      });
+    });
+
+    autoUpdater.on('update-not-available', (info) => {
+      logger.info('AutoUpdater', 'Update not available');
+      mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
+        status: 'not-available',
+        version: info.version,
+      });
+    });
+
+    autoUpdater.on('download-progress', (progress) => {
+      mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
+        status: 'downloading',
+        progress: {
+          percent: Math.round(progress.percent),
+          transferred: progress.transferred,
+          total: progress.total,
+          bytesPerSecond: progress.bytesPerSecond,
+        },
+      });
     });
 
     autoUpdater.on('update-downloaded', (info) => {
       logger.info('AutoUpdater', `Update downloaded: ${info.version}`);
+      mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
+        status: 'downloaded',
+        version: info.version,
+      });
+
       dialog
         .showMessageBox({
           type: 'info',
@@ -76,9 +116,17 @@ app.whenReady().then(() => {
         })
         .then((result) => {
           if (result.response === 0) {
-            autoUpdater.quitAndInstall();
+            autoUpdater.quitAndInstall(false, true);
           }
         });
+    });
+
+    autoUpdater.on('error', (err) => {
+      logger.warn('AutoUpdater', 'Check for updates failed or errored', err);
+      mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
+        status: 'error',
+        error: err?.message || 'Erreur lors de la vérification de mise à jour',
+      });
     });
 
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {

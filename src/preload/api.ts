@@ -126,6 +126,9 @@ const IPC_CHANNELS = {
   MAINTENANCE_DIAGNOSTICS: 'maintenance:diagnostics',
 
   UPDATER_CHECK_GITHUB: 'updater:check_github',
+  UPDATER_DOWNLOAD: 'updater:download',
+  UPDATER_INSTALL: 'updater:install',
+  UPDATER_STATUS_EVENT: 'updater:status_event',
   SYSTEM_SELECT_DIRECTORY: 'system:select_directory',
 
   // Debts & Borrowing Channels
@@ -499,6 +502,20 @@ export const api = {
       releaseNotes?: string;
     }>
   > => ipcRenderer.invoke(IPC_CHANNELS.UPDATER_CHECK_GITHUB),
+
+  downloadUpdate: (): Promise<ApiResponse<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATER_DOWNLOAD),
+
+  installUpdate: (): Promise<ApiResponse<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.UPDATER_INSTALL),
+
+  onUpdateStatus: (callback: (payload: any) => void): (() => void) => {
+    const handler = (_event: any, data: any) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.UPDATER_STATUS_EVENT, handler);
+    return () => {
+      ipcRenderer.removeListener(IPC_CHANNELS.UPDATER_STATUS_EVENT, handler);
+    };
+  },
 
   selectDirectory: (): Promise<ApiResponse<string | null>> =>
     ipcRenderer.invoke(IPC_CHANNELS.SYSTEM_SELECT_DIRECTORY),

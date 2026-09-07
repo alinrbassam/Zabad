@@ -3,16 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import { useThemeStore } from '../../stores/useThemeStore';
 import { useLanguageStore } from '../../stores/useLanguageStore';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useCommercialStore } from '../../stores/useCommercialStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
-import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useThemeStore();
   const { language, setLanguage, t } = useLanguageStore();
   const { activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
+  const { updateEvent, isInstallingUpdate, installUpdate } = useCommercialStore();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
@@ -264,6 +266,31 @@ export const TopBar: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Ready-to-Install Update Pill */}
+        {updateEvent?.status === 'downloaded' && (
+          <button
+            onClick={() => installUpdate()}
+            disabled={isInstallingUpdate}
+            className="flex items-center space-x-1.5 rtl:space-x-reverse px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all animate-pulse"
+            title={
+              language === 'ar'
+                ? 'تم تحميل التحديث بنجاح! انقر لإعادة التشغيل وتثبيته الآن'
+                : language === 'fr'
+                ? 'Mise à jour prête ! Cliquez pour redémarrer et appliquer maintenant'
+                : 'Update ready! Click to restart and apply now'
+            }
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isInstallingUpdate ? 'animate-spin' : ''}`} />
+            <span>
+              {language === 'ar'
+                ? 'تحديث متوفر (إعادة تشغيل)'
+                : language === 'fr'
+                ? 'Mise à jour prête !'
+                : 'Update Ready !'}
+            </span>
+          </button>
+        )}
 
         <Notifications />
         <UserProfile />

@@ -1,6 +1,7 @@
-import { ipcMain, dialog } from 'electron';
+import { ipcMain, dialog, app } from 'electron';
 import fs from 'node:fs';
 import Database from 'better-sqlite3';
+import { autoUpdater } from 'electron-updater';
 import { IPC_CHANNELS } from '../../shared/ipc/channels';
 import { ApiResponse } from '../../shared/types';
 import { LicensingService } from '../services/licensing.service';
@@ -122,10 +123,43 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
   // Updates
   ipcMain.handle(IPC_CHANNELS.UPDATER_CHECK_GITHUB, async (): Promise<ApiResponse> => {
     try {
+      if (app.isPackaged) {
+        autoUpdater.checkForUpdates().catch(() => {});
+      }
       const res = await updaterService.checkForUpdates();
       return { success: true, data: res };
     } catch (err) {
       return { success: false, error: { code: 'UPDATER_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.UPDATER_DOWNLOAD, async (): Promise<ApiResponse<boolean>> => {
+    try {
+      if (app.isPackaged) {
+        logger.info('Updater', 'Starting autoUpdater.downloadUpdate() via IPC');
+        await autoUpdater.downloadUpdate();
+        return { success: true, data: true };
+      } else {
+        return { success: false, error: { code: 'DEV_MODE', message: 'In-app update is only supported in installed production builds' } };
+      }
+    } catch (err) {
+      logger.error('Updater', 'Failed to download update', err);
+      return { success: false, error: { code: 'UPDATER_DOWNLOAD_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.UPDATER_INSTALL, async (): Promise<ApiResponse<boolean>> => {
+    try {
+      if (app.isPackaged) {
+        logger.info('Updater', 'Executing autoUpdater.quitAndInstall() via IPC');
+        autoUpdater.quitAndInstall(false, true);
+        return { success: true, data: true };
+      } else {
+        return { success: false, error: { code: 'DEV_MODE', message: 'In-app update is only supported in installed production builds' } };
+      }
+    } catch (err) {
+      logger.error('Updater', 'Failed to quit and install', err);
+      return { success: false, error: { code: 'UPDATER_INSTALL_ERROR', message: (err as Error).message } };
     }
   });
 

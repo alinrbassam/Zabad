@@ -125,6 +125,9 @@ export const IPC_CHANNELS = {
   MAINTENANCE_DIAGNOSTICS: 'maintenance:diagnostics',
 
   UPDATER_CHECK_GITHUB: 'updater:check_github',
+  UPDATER_DOWNLOAD: 'updater:download',
+  UPDATER_INSTALL: 'updater:install',
+  UPDATER_STATUS_EVENT: 'updater:status_event',
 
   // Debts & Borrowing Channels
   POS_DEBTS_LIST: 'pos:debts_list',

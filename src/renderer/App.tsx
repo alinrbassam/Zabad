@@ -17,6 +17,7 @@ import { NavigationLayout } from './components/layout/NavigationLayout';
 import { useAuthStore } from './stores/useAuthStore';
 import { useConfigStore } from './stores/useConfigStore';
 import { useThemeStore } from './stores/useThemeStore';
+import { useCommercialStore } from './stores/useCommercialStore';
 import { RouteDefinition } from '@shared/types/module';
 
 import { DashboardPage } from './pages/DashboardPage';
@@ -118,6 +119,8 @@ export const App: React.FC = () => {
     loadConfig();
     checkLicense();
 
+    const cleanupUpdater = useCommercialStore.getState().initUpdateListeners();
+
     // Always reset to Cashier mode and navigate to /pos on app launch
     useAuthStore.getState().setRoleMode('cashier');
     if (!window.location.hash || window.location.hash === '#/' || !window.location.hash.startsWith('#/pos')) {
@@ -131,7 +134,9 @@ export const App: React.FC = () => {
         isScreenLocked: false,
         activeRoleMode: 'cashier',
       });
-      return;
+      return () => {
+        cleanupUpdater();
+      };
     }
 
     checkSession();
@@ -157,6 +162,10 @@ export const App: React.FC = () => {
     } else {
       setIsSetupComplete(true);
     }
+
+    return () => {
+      cleanupUpdater();
+    };
   }, [loadConfig, checkSession, checkLicense]);
 
   useEffect(() => {

@@ -36,6 +36,19 @@ interface DiagnosticsData {
   lastBackupDate?: string | null;
 }
 
+export interface UpdaterEventPayload {
+  status: 'idle' | 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error';
+  version?: string;
+  releaseNotes?: string;
+  progress?: {
+    percent: number;
+    transferred: number;
+    total: number;
+    bytesPerSecond: number;
+  };
+  error?: string;
+}
+
 interface CommercialState {
   deviceId: string;
   license: LicenseInfo | null;
@@ -48,6 +61,8 @@ interface CommercialState {
     releaseNotes?: string;
     downloadUrl?: string;
   } | null;
+  updateEvent: UpdaterEventPayload | null;
+  isInstallingUpdate: boolean;
   isLoading: boolean;
   error: string | null;
 
@@ -63,6 +78,9 @@ interface CommercialState {
   runIntegrityCheck: () => Promise<{ status: string; result: string } | null>;
   loadDiagnostics: () => Promise<void>;
   checkForUpdates: () => Promise<void>;
+  initUpdateListeners: () => () => void;
+  downloadUpdate: () => Promise<boolean>;
+  installUpdate: () => Promise<boolean>;
 }
 
 export const useCommercialStore = create<CommercialState>((set, get) => ({
@@ -71,6 +89,8 @@ export const useCommercialStore = create<CommercialState>((set, get) => ({
   backups: [],
   diagnostics: null,
   updateStatus: null,
+  updateEvent: null,
+  isInstallingUpdate: false,
   isLoading: false,
   error: null,
 
@@ -270,6 +290,74 @@ export const useCommercialStore = create<CommercialState>((set, get) => ({
       set({ error: (err as Error).message });
     } finally {
       set({ isLoading: false });
+    }
+  },
+
+  initUpdateListeners: () => {
+    if (window.api?.onUpdateStatus) {
+      return window.api.onUpdateStatus((event: UpdaterEventPayload) => {
+        set((state) => {
+          const current = state.updateStatus;
+          const newStatus = current ? { ...current } : {
+            hasUpdate: false,
+            currentVersion: '1.0.0',
+            latestVersion: '',
+            releaseNotes: '',
+          };
+
+          if (event.status === 'available' || event.status === 'downloaded') {
+            newStatus.hasUpdate = true;
+            if (event.version) newStatus.latestVersion = event.version;
+            if (event.releaseNotes) newStatus.releaseNotes = event.releaseNotes;
+          }
+
+          return {
+            updateEvent: event,
+            updateStatus: newStatus,
+          };
+        });
+      });
+    }
+    return () => {};
+  },
+
+  downloadUpdate: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.downloadUpdate) {
+        const res = await window.api.downloadUpdate();
+        if (res.success) {
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Download failed' });
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  installUpdate: async () => {
+    set({ isInstallingUpdate: true, error: null });
+    try {
+      if (window.api?.installUpdate) {
+        const res = await window.api.installUpdate();
+        if (res.success) {
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Install failed' });
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isInstallingUpdate: false });
     }
   },
 }));
