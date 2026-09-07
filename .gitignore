@@ -59,7 +59,7 @@ dashboard/.next/
 *.db
 *.db-journal
 *.sqlite
-database/
+/database/
 
 # Local backup directories
 tmp_backups/
