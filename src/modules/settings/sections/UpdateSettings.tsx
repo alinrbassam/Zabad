@@ -30,7 +30,9 @@ export const UpdateSettings: React.FC = () => {
           <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
             <div>
               <span className="text-slate-500 block">Installed Version:</span>
-              <span className="font-bold text-base text-slate-900 dark:text-slate-100">v1.0.0</span>
+              <span className="font-bold text-base text-slate-900 dark:text-slate-100">
+                {updateStatus?.currentVersion ? `v${updateStatus.currentVersion}` : 'v1.0.0'}
+              </span>
             </div>
 
             {checked && updateStatus && (

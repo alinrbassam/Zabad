@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import { createMainWindow } from './window';
 import { registerIpcHandlers } from './ipc';
@@ -57,6 +57,30 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('update-available', (info) => {
+      logger.info('AutoUpdater', `Update available: ${info.version}`);
+    });
+
+    autoUpdater.on('update-downloaded', (info) => {
+      logger.info('AutoUpdater', `Update downloaded: ${info.version}`);
+      dialog
+        .showMessageBox({
+          type: 'info',
+          title: 'Mise à jour prête / Update Ready',
+          message: `Une nouvelle version (${info.version}) de Zabad POS a été téléchargée avec succès.`,
+          detail: 'Voulez-vous redémarrer l’application maintenant pour appliquer la mise à jour ?',
+          buttons: ['Redémarrer maintenant', 'Plus tard'],
+          defaultId: 0,
+          cancelId: 1,
+        })
+        .then((result) => {
+          if (result.response === 0) {
+            autoUpdater.quitAndInstall();
+          }
+        });
+    });
+
     autoUpdater.checkForUpdatesAndNotify().catch((err) => {
       logger.warn('AutoUpdater', 'Check for updates failed', err);
     });
