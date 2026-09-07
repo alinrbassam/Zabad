@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useCommercialStore } from '../../stores/useCommercialStore';
 import { useLanguageStore } from '../../stores/useLanguageStore';
 import {
@@ -57,16 +57,24 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
     setLocalError(null);
 
     const ok = await activateWithSecretKey(secretInput.trim());
-    if (ok && onActivated) {
-      onActivated();
+    if (ok) {
+      if (onActivated) {
+        onActivated();
+      }
+      window.location.hash = '#/pos';
+      window.location.reload();
     }
   };
 
   const handleSelectFile = async () => {
     setLocalError(null);
     const ok = await selectAndActivateLicense();
-    if (ok && onActivated) {
-      onActivated();
+    if (ok) {
+      if (onActivated) {
+        onActivated();
+      }
+      window.location.hash = '#/pos';
+      window.location.reload();
     }
   };
 
@@ -80,8 +88,12 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
       if (content) {
         setLocalError(null);
         const ok = await activateLicense(content);
-        if (ok && onActivated) {
-          onActivated();
+        if (ok) {
+          if (onActivated) {
+            onActivated();
+          }
+          window.location.hash = '#/pos';
+          window.location.reload();
         }
       }
     };
