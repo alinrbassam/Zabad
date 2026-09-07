@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
-import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
@@ -15,7 +15,26 @@ export const TopBar: React.FC = () => {
   const { activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
+  const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
   const langRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    const interval = setInterval(() => {
+      setIsOnline(navigator.onLine);
+    }, 4000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, []);
 
   React.useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -191,6 +210,59 @@ export const TopBar: React.FC = () => {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Internet Connection Status Indicator */}
+        <div
+          className={`flex items-center space-x-1.5 rtl:space-x-reverse px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            isOnline
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800'
+              : 'bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400 border-rose-300 dark:border-rose-800 animate-pulse'
+          }`}
+          title={
+            isOnline
+              ? language === 'ar'
+                ? 'متصل بالإنترنت'
+                : language === 'fr'
+                ? 'Connecté à Internet'
+                : 'Online'
+              : language === 'ar'
+              ? 'غير متصل بالإنترنت'
+              : language === 'fr'
+              ? 'Hors ligne (Vente locale active)'
+              : 'Offline (Local mode)'
+          }
+        >
+          <span className="relative flex h-2 w-2">
+            {isOnline && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            )}
+            <span
+              className={`relative inline-flex rounded-full h-2 w-2 ${
+                isOnline ? 'bg-emerald-500' : 'bg-rose-500'
+              }`}
+            />
+          </span>
+          <div className="flex items-center space-x-1 rtl:space-x-reverse">
+            {isOnline ? (
+              <Wifi className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+            ) : (
+              <WifiOff className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
+            )}
+            <span className="text-[11px] font-bold">
+              {isOnline
+                ? language === 'ar'
+                  ? 'متصل'
+                  : language === 'fr'
+                  ? 'En ligne'
+                  : 'Online'
+                : language === 'ar'
+                ? 'غير متصل'
+                : language === 'fr'
+                ? 'Hors ligne'
+                : 'Offline'}
+            </span>
+          </div>
         </div>
 
         <Notifications />
