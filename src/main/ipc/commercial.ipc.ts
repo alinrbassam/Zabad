@@ -23,7 +23,12 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.LICENSING_GET_INFO, async (): Promise<ApiResponse> => {
-    return { success: true, data: licensingService.getActiveLicense() };
+    try {
+      return { success: true, data: licensingService.getActiveLicense() };
+    } catch (err) {
+      logger.error('CommercialIPC', 'Failed to get active license', err);
+      return { success: false, error: { code: 'LICENSING_GET_INFO_ERROR', message: (err as Error).message } };
+    }
   });
 
   ipcMain.handle(IPC_CHANNELS.LICENSING_ACTIVATE_FILE, async (_, payloadStr: string): Promise<ApiResponse> => {

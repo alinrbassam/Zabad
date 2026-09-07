@@ -93,36 +93,37 @@ export class LicensingService {
    * expiration date verification, and status check.
    */
   public getActiveLicense(): LicenseDetails | null {
-    const stmt = this.db.prepare(
-      'SELECT * FROM license_info WHERE status = "Active" ORDER BY activated_at DESC LIMIT 1',
-    );
-    const row = stmt.get() as LicenseDbRow | undefined;
-    if (!row) return null;
-
-    // 1. Device binding check
-    const currentNormalized = this.normalizeDeviceId(this.getDeviceFingerprint());
-    const licenseNormalized = this.normalizeDeviceId(row.device_id);
-    if (licenseNormalized && licenseNormalized !== currentNormalized) {
-      logger.warn(
-        'LicensingService',
-        `License device mismatch: bound to ${row.device_id}, current is ${currentNormalized}`,
+    try {
+      const stmt = this.db.prepare(
+        "SELECT * FROM license_info WHERE status = 'Active' ORDER BY activated_at DESC LIMIT 1",
       );
-      return null;
-    }
+      const row = stmt.get() as LicenseDbRow | undefined;
+      if (!row) return null;
 
-    // 2. Expiration check
-    if (row.expiration_date) {
-      const exp = new Date(row.expiration_date);
-      if (!isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
-        logger.warn('LicensingService', `License expired on ${row.expiration_date}`);
-        try {
-          this.db.prepare('UPDATE license_info SET status = "Expired" WHERE id = ?').run(row.id);
-        } catch {
-          // ignore
-        }
+      // 1. Device binding check
+      const currentNormalized = this.normalizeDeviceId(this.getDeviceFingerprint());
+      const licenseNormalized = this.normalizeDeviceId(row.device_id);
+      if (licenseNormalized && licenseNormalized !== currentNormalized) {
+        logger.warn(
+          'LicensingService',
+          `License device mismatch: bound to ${row.device_id}, current is ${currentNormalized}`,
+        );
         return null;
       }
-    }
+
+      // 2. Expiration check
+      if (row.expiration_date) {
+        const exp = new Date(row.expiration_date);
+        if (!isNaN(exp.getTime()) && exp.getTime() < Date.now()) {
+          logger.warn('LicensingService', `License expired on ${row.expiration_date}`);
+          try {
+            this.db.prepare("UPDATE license_info SET status = 'Expired' WHERE id = ?").run(row.id);
+          } catch {
+            // ignore
+          }
+          return null;
+        }
+      }
 
     // 3. Status check
     if (row.status !== 'Active') {
@@ -136,18 +137,22 @@ export class LicensingService {
       modules = ['pos', 'inventory', 'purchasing', 'expenses', 'reports', 'settings'];
     }
 
-    return {
-      id: row.id,
-      licenseKey: row.license_key,
-      customerName: row.customer_name,
-      businessName: row.business_name,
-      deviceId: row.device_id,
-      issueDate: row.issue_date,
-      expirationDate: row.expiration_date,
-      licenseType: row.license_type,
-      enabledModules: modules,
-      status: row.status,
-    };
+      return {
+        id: row.id,
+        licenseKey: row.license_key,
+        customerName: row.customer_name,
+        businessName: row.business_name,
+        deviceId: row.device_id,
+        issueDate: row.issue_date,
+        expirationDate: row.expiration_date,
+        licenseType: row.license_type,
+        enabledModules: modules,
+        status: row.status,
+      };
+    } catch (err) {
+      logger.error('LicensingService', 'Error querying active license from database', err);
+      return null;
+    }
   }
 
   /**
@@ -338,10 +343,10 @@ export class LicensingService {
     try {
       if (deviceIdOrKey) {
         this.db
-          .prepare('UPDATE license_info SET status = "Revoked" WHERE device_id = ? OR license_key = ?')
+          .prepare("UPDATE license_info SET status = 'Revoked' WHERE device_id = ? OR license_key = ?")
           .run(deviceIdOrKey, deviceIdOrKey);
       } else {
-        this.db.prepare('UPDATE license_info SET status = "Revoked" WHERE status = "Active"').run();
+        this.db.prepare("UPDATE license_info SET status = 'Revoked' WHERE status = 'Active'").run();
       }
       logger.warn('LicensingService', `Revoked license: ${deviceIdOrKey || 'active'}`);
       return true;
