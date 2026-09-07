@@ -55,6 +55,7 @@ interface CommercialState {
   loadActiveLicense: () => Promise<void>;
   activateLicense: (payloadStr: string) => Promise<boolean>;
   selectAndActivateLicense: () => Promise<boolean>;
+  activateWithSecretKey: (secretKey: string) => Promise<boolean>;
   loadBackups: () => Promise<void>;
   createFullBackup: (folder: string) => Promise<boolean>;
   createAutoBackup: (folder: string, retention?: number) => Promise<boolean>;
@@ -130,6 +131,27 @@ export const useCommercialStore = create<CommercialState>((set, get) => ({
           return false;
         }
         return await get().activateLicense(fileRes.data);
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  activateWithSecretKey: async (secretKey) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.activateWithSecretKey) {
+        const res = await window.api.activateWithSecretKey(secretKey);
+        if (res.success && res.data) {
+          set({ license: res.data as LicenseInfo });
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Code secret incorrect / Invalid secret code' });
+        }
       }
       return false;
     } catch (err) {

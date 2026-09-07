@@ -113,6 +113,7 @@ export const IPC_CHANNELS = {
   LICENSING_GET_INFO: 'licensing:get_info',
   LICENSING_ACTIVATE_FILE: 'licensing:activate_file',
   LICENSING_SELECT_FILE: 'licensing:select_file',
+  LICENSING_ACTIVATE_SECRET: 'licensing:activate_secret',
 
   BACKUP_LIST: 'backup:list',
   BACKUP_CREATE_FULL: 'backup:create_full',

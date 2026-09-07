@@ -1,16 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { useCommercialStore } from '../../stores/useCommercialStore';
 import { useLanguageStore } from '../../stores/useLanguageStore';
 import {
-  ShieldAlert,
+  ShieldCheck,
+  Lock,
+  Eye,
+  EyeOff,
   Copy,
   Check,
   Upload,
-  Key,
   Globe,
   Fish,
   AlertCircle,
-  HelpCircle,
+  KeyRound,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface ActivationScreenProps {
@@ -18,13 +22,21 @@ interface ActivationScreenProps {
 }
 
 export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated }) => {
-  const { deviceId, loadDeviceId, activateLicense, selectAndActivateLicense, isLoading, error } =
-    useCommercialStore();
+  const {
+    deviceId,
+    loadDeviceId,
+    activateWithSecretKey,
+    activateLicense,
+    selectAndActivateLicense,
+    isLoading,
+    error,
+  } = useCommercialStore();
   const { language, setLanguage } = useLanguageStore();
 
+  const [secretInput, setSecretInput] = useState('');
+  const [showSecret, setShowSecret] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [showManualPaste, setShowManualPaste] = useState(false);
-  const [manualText, setManualText] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -37,6 +49,17 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
     navigator.clipboard.writeText(deviceId);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleSecretSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!secretInput.trim()) return;
+    setLocalError(null);
+
+    const ok = await activateWithSecretKey(secretInput.trim());
+    if (ok && onActivated) {
+      onActivated();
+    }
   };
 
   const handleSelectFile = async () => {
@@ -63,19 +86,9 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
       }
     };
     reader.onerror = () => {
-      setLocalError('Impossible de lire le fichier sélectionné / Failed to read selected file.');
+      setLocalError('Impossible de lire le fichier sélectionné.');
     };
     reader.readAsText(file);
-  };
-
-  const handleManualSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!manualText.trim()) return;
-    setLocalError(null);
-    const ok = await activateLicense(manualText.trim());
-    if (ok && onActivated) {
-      onActivated();
-    }
   };
 
   const activeError = localError || error;
@@ -97,10 +110,10 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
             </div>
             <p className="text-[11px] text-slate-400">
               {language === 'ar'
-                ? 'نظام نقاط البيع للمأكولات البحرية والأسماك'
+                ? 'نظام نقاط البيع وإدارة المتاجر'
                 : language === 'fr'
-                ? 'Système de Caisse & Gestion Poissonnerie'
-                : 'Fresh Seafood Retail & POS System'}
+                ? 'Système de Caisse & Gestion Commerciale'
+                : 'Commercial Retail & POS System'}
             </p>
           </div>
         </div>
@@ -126,192 +139,158 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
       </div>
 
       {/* Main Activation Card */}
-      <div className="max-w-xl w-full mx-auto my-auto py-6">
-        <div className="bg-slate-800/90 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/50 space-y-6">
+      <div className="max-w-md w-full mx-auto my-auto py-6">
+        <div className="bg-slate-800/95 border border-slate-700 rounded-3xl p-6 sm:p-8 shadow-2xl shadow-black/60 space-y-6">
           {/* Card Header */}
           <div className="text-center space-y-2">
-            <div className="inline-flex p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 mb-1">
-              <ShieldAlert className="h-8 w-8" />
+            <div className="inline-flex p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 mb-1">
+              <Lock className="h-8 w-8" />
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">
               {language === 'ar'
-                ? 'تنشيط النظام مطلوب'
+                ? 'تنشيط النظام'
                 : language === 'fr'
-                ? 'Activation du Logiciel Requise'
-                : 'Software Activation Required'}
+                ? 'Activation du Système'
+                : 'System Activation'}
             </h1>
-            <p className="text-xs text-slate-400 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
               {language === 'ar'
-                ? 'هذا النظام محمي ومرتبط بهذا الجهاز تحديداً. يرجى تزويد المطور برمز الجهاز أدناه للحصول على ملف الترخيص.'
+                ? 'يرجى إدخال الرمز السري للتنشيط لفتح البرنامج على هذا الجهاز.'
                 : language === 'fr'
-                ? 'Cette installation de Zabad POS est sécurisée et verrouillée pour cet appareil. Veuillez fournir le Code d’Appareil ci-dessous à votre fournisseur.'
-                : 'This Zabad POS installation is bound to this specific hardware. Please provide the Device Code below to your software vendor to receive your license.'}
+                ? 'Veuillez entrer le code secret d’activation pour déverrouiller ce terminal.'
+                : 'Please enter the secret activation code to unlock this terminal.'}
             </p>
           </div>
 
-          {/* Error Message */}
+          {/* Error Alert */}
           {activeError && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start space-x-2.5 rtl:space-x-reverse">
+            <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start space-x-2.5 rtl:space-x-reverse animate-shake">
               <AlertCircle className="h-4 w-4 text-rose-400 flex-shrink-0 mt-0.5" />
               <div className="space-y-0.5">
                 <span className="font-bold block">
-                  {language === 'ar' ? 'فشل التنشيط' : language === 'fr' ? 'Erreur d’activation' : 'Activation Error'}
+                  {language === 'ar' ? 'رمز غير صحيح' : language === 'fr' ? 'Code Invalide' : 'Invalid Code'}
                 </span>
                 <span>{activeError}</span>
               </div>
             </div>
           )}
 
-          {/* Device Activation Code Box */}
-          <div className="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 space-y-2">
-            <div className="flex items-center justify-between text-[11px] text-slate-400">
-              <span className="font-semibold uppercase tracking-wider">
-                {language === 'ar' ? 'رمز تنشيط الجهاز' : language === 'fr' ? 'Code d’Activation de l’Appareil' : 'Device Activation Code'}
-              </span>
-              <span className="text-[10px] text-sky-400 font-mono">Hardware ID</span>
-            </div>
+          {/* Primary Action: Secret Code Input Form */}
+          <form onSubmit={handleSecretSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
+                <span>
+                  {language === 'ar'
+                    ? 'الرمز السري للتنشيط :'
+                    : language === 'fr'
+                    ? 'Code Secret d’Activation :'
+                    : 'Secret Activation Code:'}
+                </span>
+                <span className="text-[10px] text-slate-500">Technician / AnyDesk</span>
+              </label>
 
-            <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-xl sm:text-2xl font-black tracking-widest text-sky-400 select-all">
-                {deviceId || 'GENERATING...'}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <KeyRound className="h-4 w-4" />
+                </div>
+                <input
+                  type={showSecret ? 'text' : 'password'}
+                  autoFocus
+                  value={secretInput}
+                  onChange={(e) => setSecretInput(e.target.value)}
+                  placeholder="••••••••••••••••••••"
+                  className="w-full pl-10 pr-10 py-3.5 bg-slate-900 border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-2xl text-sm font-mono text-white tracking-widest outline-none transition-all placeholder-slate-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecret(!showSecret)}
+                  tabIndex={-1}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleCopyCode}
-                className="flex items-center space-x-1.5 rtl:space-x-reverse px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-slate-200 text-xs font-bold transition-all active:scale-95 flex-shrink-0"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-4 w-4 text-emerald-400" />
-                    <span className="text-emerald-400 font-bold">
-                      {language === 'ar' ? 'تم النسخ' : language === 'fr' ? 'Copié !' : 'Copied!'}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-4 w-4 text-slate-300" />
-                    <span>{language === 'ar' ? 'نسخ' : language === 'fr' ? 'Copier' : 'Copy'}</span>
-                  </>
-                )}
-              </button>
             </div>
-          </div>
-
-          {/* Instructions Step-by-Step */}
-          <div className="bg-slate-800/50 border border-slate-700/50 rounded-2xl p-3.5 space-y-2 text-xs text-slate-300">
-            <div className="font-bold text-slate-200 flex items-center space-x-1.5 rtl:space-x-reverse">
-              <HelpCircle className="h-3.5 w-3.5 text-sky-400" />
-              <span>
-                {language === 'ar' ? 'خطوات التنشيط السريعة :' : language === 'fr' ? 'Étapes d’activation :' : 'Activation Steps:'}
-              </span>
-            </div>
-            <ol className="space-y-1.5 text-[11px] text-slate-400 list-decimal list-inside leading-relaxed">
-              <li>
-                <strong className="text-slate-300">
-                  {language === 'ar' ? 'انسخ رمز الجهاز' : language === 'fr' ? 'Copiez le Code d’Appareil' : 'Copy the Device Code'}{' '}
-                </strong>
-                {language === 'ar' ? 'وأرسله للمطور عبر واتساب أو إيميل.' : language === 'fr' ? 'et envoyez-le par WhatsApp ou Email.' : 'and send it via WhatsApp or email.'}
-              </li>
-              <li>
-                {language === 'ar'
-                  ? 'ستستلم ملف ترخيص معتمد بصيغة '
-                  : language === 'fr'
-                  ? 'Recevez votre fichier de licence officiel '
-                  : 'Receive your official license file '}
-                <strong className="text-sky-400 font-mono">.zabad</strong>.
-              </li>
-              <li>
-                {language === 'ar'
-                  ? 'اضغط زر الاستيراد أدناه لاختيار الملف والتنشيط فوراً.'
-                  : language === 'fr'
-                  ? 'Cliquez ci-dessous pour importer le fichier et débloquer le système.'
-                  : 'Click below to import the file and unlock the system.'}
-              </li>
-            </ol>
-          </div>
-
-          {/* Primary Action Button: Import .zabad file */}
-          <div className="space-y-3">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileInputChange}
-              accept=".zabad,.json,.rms"
-              className="hidden"
-            />
 
             <button
-              type="button"
-              disabled={isLoading}
-              onClick={handleSelectFile}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-[0.99] text-white font-black text-sm sm:text-base flex items-center justify-center space-x-2.5 rtl:space-x-reverse shadow-xl shadow-emerald-600/30 transition-all cursor-pointer"
+              type="submit"
+              disabled={isLoading || !secretInput.trim()}
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-600 to-cyan-500 hover:from-sky-500 hover:to-cyan-400 active:scale-[0.99] disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center space-x-2 rtl:space-x-reverse shadow-xl shadow-sky-600/30 transition-all cursor-pointer"
             >
               {isLoading ? (
                 <>
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                  <div className="h-4 w-4 border-2 border-white border-t-transparent animate-spin rounded-full" />
                   <span>
-                    {language === 'ar'
-                      ? 'جاري التحقق من الترخيص...'
-                      : language === 'fr'
-                      ? 'Vérification de la licence...'
-                      : 'Verifying License...'}
+                    {language === 'ar' ? 'جاري التحقق...' : language === 'fr' ? 'Vérification...' : 'Verifying...'}
                   </span>
                 </>
               ) : (
                 <>
-                  <Upload className="h-5 w-5" />
+                  <ShieldCheck className="h-4 w-4" />
                   <span>
                     {language === 'ar'
-                      ? '📁 استيراد ملف الترخيص (.zabad)'
+                      ? 'تنشيط النظام والفتح فوراً ✓'
                       : language === 'fr'
-                      ? '📁 Importer le Fichier de Licence (.zabad)'
-                      : '📁 Import License File (.zabad)'}
+                      ? 'Déverrouiller le Système ✓'
+                      : 'Unlock System ✓'}
                   </span>
                 </>
               )}
             </button>
+          </form>
 
-            {/* Toggle Manual Paste Textarea */}
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setShowManualPaste(!showManualPaste)}
-                className="text-xs text-slate-400 hover:text-sky-400 font-medium transition-colors"
-              >
-                {showManualPaste
-                  ? language === 'ar'
-                    ? '▲ إخفاء لصق النص يدوياً'
-                    : language === 'fr'
-                    ? '▲ Masquer la saisie manuelle'
-                    : '▲ Hide manual paste'
-                  : language === 'ar'
-                  ? '▼ أو لصق كود الترخيص يدوياً'
-                  : language === 'fr'
-                  ? '▼ Ou coller le texte de la licence'
-                  : '▼ Or paste license text manually'}
-              </button>
-            </div>
+          {/* Advanced / Device Code Collapsible Drawer */}
+          <div className="pt-2 border-t border-slate-700/60">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full flex items-center justify-between text-[11px] text-slate-500 hover:text-slate-300 transition-colors py-1"
+            >
+              <span>
+                {language === 'ar' ? 'معلومات الجهاز وخيارات متقدمة' : language === 'fr' ? 'Informations appareil & options' : 'Device info & options'}
+              </span>
+              {showAdvanced ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            </button>
 
-            {showManualPaste && (
-              <form onSubmit={handleManualSubmit} className="space-y-2 pt-2">
-                <textarea
-                  rows={4}
-                  value={manualText}
-                  onChange={(e) => setManualText(e.target.value)}
-                  placeholder='{"app":"Zabad POS","license":{...},"signature":"..."}'
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-500 placeholder-slate-600"
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !manualText.trim()}
-                  className="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center space-x-2 rtl:space-x-reverse transition-all"
-                >
-                  <Key className="h-3.5 w-3.5" />
-                  <span>
-                    {language === 'ar' ? 'تنشيط' : language === 'fr' ? 'Activer' : 'Activate'}
-                  </span>
-                </button>
-              </form>
+            {showAdvanced && (
+              <div className="mt-3 space-y-3 bg-slate-900/70 p-3 rounded-2xl border border-slate-700/70 text-xs">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider block">
+                      Hardware ID
+                    </span>
+                    <span className="font-mono text-xs font-bold text-sky-400">
+                      {deviceId || 'LOADING...'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    className="flex items-center space-x-1 rtl:space-x-reverse px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-semibold border border-slate-700 transition-all"
+                  >
+                    {copied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                    <span>{copied ? 'Copié' : 'Copier'}</span>
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileInputChange}
+                    accept=".zabad,.json,.rms"
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSelectFile}
+                    className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium flex items-center justify-center space-x-2 rtl:space-x-reverse transition-colors"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    <span>Importer fichier .zabad (optionnel)</span>
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -319,7 +298,7 @@ export const ActivationScreen: React.FC<ActivationScreenProps> = ({ onActivated 
 
       {/* Footer Info */}
       <div className="text-center text-[11px] text-slate-500 max-w-md mx-auto pt-2">
-        <span>Zabad POS • Commercial Enterprise Edition • Offline Secure Activation</span>
+        <span>Zabad POS • Commercial Edition • Single Device License</span>
       </div>
     </div>
   );

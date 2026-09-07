@@ -35,6 +35,15 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
     }
   });
 
+  ipcMain.handle(IPC_CHANNELS.LICENSING_ACTIVATE_SECRET, async (_, secretKey: string): Promise<ApiResponse> => {
+    try {
+      const res = licensingService.activateWithSecretKey(secretKey);
+      return { success: true, data: res };
+    } catch (err) {
+      return { success: false, error: { code: 'SECRET_ERROR', message: (err as Error).message } };
+    }
+  });
+
   ipcMain.handle(IPC_CHANNELS.LICENSING_SELECT_FILE, async (): Promise<ApiResponse<string | null>> => {
     try {
       const { canceled, filePaths } = await dialog.showOpenDialog({

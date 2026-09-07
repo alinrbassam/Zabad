@@ -279,6 +279,59 @@ export class LicensingService {
   }
 
   /**
+   * Activates this device using the master AnyDesk technician secret code.
+   */
+  public activateWithSecretKey(secretKey: string): LicenseDetails {
+    const MASTER_KEY = 'zabad-secret-key-2026';
+    const trimmed = (secretKey || '').trim();
+    if (trimmed !== MASTER_KEY) {
+      throw new Error('Code secret d’activation invalide / Invalid secret activation code.');
+    }
+
+    const currentDeviceId = this.getDeviceFingerprint();
+    const licenseId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    // Clear any older license rows to cleanly activate
+    this.db.prepare('DELETE FROM license_info').run();
+
+    const insertStmt = this.db.prepare(`
+      INSERT INTO license_info (
+        id, license_key, customer_name, business_name, device_id,
+        issue_date, expiration_date, license_type, enabled_modules_json, status, activated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?)
+    `);
+
+    insertStmt.run(
+      licenseId,
+      'ZBD-MASTER-ENTERPRISE-LIFETIME',
+      'Client Zabad',
+      'Poissonnerie Zabad',
+      currentDeviceId,
+      now,
+      null, // Lifetime
+      'Lifetime',
+      JSON.stringify(['pos', 'inventory', 'purchasing', 'expenses', 'reports', 'settings']),
+      now,
+    );
+
+    logger.info('LicensingService', `Successfully activated device ${currentDeviceId} via technician secret key`);
+
+    return {
+      id: licenseId,
+      licenseKey: 'ZBD-MASTER-ENTERPRISE-LIFETIME',
+      customerName: 'Client Zabad',
+      businessName: 'Poissonnerie Zabad',
+      deviceId: currentDeviceId,
+      issueDate: now,
+      expirationDate: null,
+      licenseType: 'Lifetime',
+      enabledModules: ['pos', 'inventory', 'purchasing', 'expenses', 'reports', 'settings'],
+      status: 'Active',
+    };
+  }
+
+  /**
    * Revokes an active license (locally or triggered by remote sync).
    */
   public revokeLicense(deviceIdOrKey?: string): boolean {
