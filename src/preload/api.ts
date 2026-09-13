@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+import { ipcRenderer, webFrame } from 'electron';
 const IPC_CHANNELS = {
   CONFIG_GET: 'config:get',
   CONFIG_UPDATE: 'config:update',
@@ -571,6 +571,22 @@ export const api = {
     ipcRenderer.invoke(IPC_CHANNELS.CLOUD_SYNC_NOW),
   getCloudSnapshot: (): Promise<ApiResponse<any>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLOUD_GET_SNAPSHOT),
+
+  // Zoom controls
+  setZoomFactor: (factor: number): void => {
+    try {
+      webFrame.setZoomFactor(factor);
+    } catch (err) {
+      console.error('Failed to set zoom factor', err);
+    }
+  },
+  getZoomFactor: (): number => {
+    try {
+      return webFrame.getZoomFactor();
+    } catch {
+      return 1.0;
+    }
+  },
 };
 
 export type WindowApi = typeof api;

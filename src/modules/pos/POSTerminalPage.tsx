@@ -3,6 +3,7 @@ import { usePOSStore } from '@stores/usePOSStore';
 import { useProductStore } from '@stores/useProductStore';
 import { useAuthStore } from '@stores/useAuthStore';
 import { useLanguageStore } from '@stores/useLanguageStore';
+import { useZoomStore } from '@stores/useZoomStore';
 import { SalesOrderEntity, ProductEntity } from '@shared/types';
 import { Button } from '@components/ui/Button';
 import { POSPaymentModal } from './POSPaymentModal';
@@ -137,6 +138,7 @@ export const POSTerminalPage: React.FC = () => {
   const { products, loadProducts } = useProductStore();
   const { user } = useAuthStore();
   const { language } = useLanguageStore();
+  const { zoom, zoomIn, zoomOut, resetZoom } = useZoomStore();
 
   const [productSearch, setProductSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -267,36 +269,64 @@ export const POSTerminalPage: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col md:flex-row gap-4 p-2 bg-slate-50 text-slate-900 font-sans overflow-hidden">
+    <div className="h-full flex-1 flex flex-col md:flex-row gap-3 bg-slate-50 text-slate-900 font-sans overflow-hidden select-none">
       {/* LEFT PANEL: Live Fish Catalog Grid & Category Filter */}
-      <div className="flex-1 flex flex-col min-w-0 space-y-3.5">
-        {/* Search Bar */}
-        <div className="relative">
-          <div className="flex items-center space-x-2 rtl:space-x-reverse bg-white border border-slate-200 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20 shadow-sm px-3.5 py-2.5 rounded-2xl transition-all">
-            <Search className="h-4 w-4 text-sky-600 flex-shrink-0" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={productSearch}
-              onChange={(e) => setProductSearch(e.target.value)}
-              placeholder={
-                language === 'ar'
-                  ? 'بحث سريع بالاسم (سالمون، دنيس، قاروص، روبيان)...'
-                  : 'Quick search fish (Salmon, Sea Bream, Sea Bass, Shrimp)...'
-              }
-              className="w-full bg-transparent text-xs sm:text-sm focus:outline-none text-slate-900 placeholder-slate-400"
-              autoFocus
-            />
+      <div className="flex-1 flex flex-col min-w-0 space-y-3">
+        {/* Search Bar & Quick Zoom Controls */}
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <div className="flex items-center space-x-2 rtl:space-x-reverse bg-white border border-slate-200 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20 shadow-sm px-3.5 py-2 rounded-2xl transition-all">
+              <Search className="h-4 w-4 text-sky-600 flex-shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                placeholder={
+                  language === 'ar'
+                    ? 'بحث سريع بالاسم (سالمون، دنيس، قاروص، روبيان)...'
+                    : 'Quick search fish (Salmon, Sea Bream, Sea Bass, Shrimp)...'
+                }
+                className="w-full bg-transparent text-xs sm:text-sm focus:outline-none text-slate-900 placeholder-slate-400"
+                autoFocus
+              />
+            </div>
+          </div>
+
+          {/* Quick Zoom on POS Screen */}
+          <div className="hidden sm:flex items-center bg-white border border-slate-200 rounded-2xl px-2 py-1 shadow-sm space-x-0.5 rtl:space-x-reverse text-xs select-none">
+            <span className="text-[11px] font-semibold text-slate-400 px-1">Zoom:</span>
+            <button
+              onClick={zoomOut}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+              title="Zoom - (Ctrl -)"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={resetZoom}
+              className="px-1.5 py-0.5 font-mono font-bold text-sky-600 hover:bg-sky-50 rounded-lg text-xs transition-colors"
+              title="Reset 100% (Ctrl 0)"
+            >
+              {zoom}%
+            </button>
+            <button
+              onClick={zoomIn}
+              className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+              title="Zoom + (Ctrl +)"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
 
         {/* Category Chips Bar */}
-        <div className="flex space-x-2 rtl:space-x-reverse overflow-x-auto pb-1 select-none">
+        <div className="flex space-x-2 rtl:space-x-reverse overflow-x-auto pb-1 select-none scrollbar-none">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                 selectedCategory === cat.id
                   ? 'bg-sky-600 text-white shadow-sm border border-sky-600'
                   : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200 shadow-sm'
@@ -308,12 +338,12 @@ export const POSTerminalPage: React.FC = () => {
         </div>
 
         {/* Product Catalog Cards Grid */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3.5 pr-1">
+        <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pr-1">
           {displayProducts.map((p) => (
             <div
               key={p.id}
               onClick={() => addToCart(p, 1.0)}
-              className="group relative bg-white hover:bg-sky-50/40 border border-slate-200 hover:border-sky-400 p-4 rounded-2xl cursor-pointer transition-all flex flex-col justify-between space-y-3 select-none active:scale-[0.98] shadow-sm hover:shadow-md"
+              className="group relative bg-white hover:bg-sky-50/40 border border-slate-200 hover:border-sky-400 p-3.5 rounded-2xl cursor-pointer transition-all flex flex-col justify-between space-y-2.5 select-none active:scale-[0.98] shadow-sm hover:shadow-md"
             >
               <div>
                 <div className="flex items-start justify-between gap-1 mb-2">
@@ -333,7 +363,7 @@ export const POSTerminalPage: React.FC = () => {
                 <span className="text-[11px] text-slate-500 font-medium">
                   {language === 'ar' ? 'السعر:' : 'Price:'}
                 </span>
-                <span className="text-base font-extrabold text-emerald-600 font-mono tracking-tight">
+                <span className="text-sm sm:text-base font-extrabold text-emerald-600 font-mono tracking-tight">
                   {formatCurrency(p.selling_price || 0)}
                 </span>
               </div>
@@ -343,9 +373,9 @@ export const POSTerminalPage: React.FC = () => {
       </div>
 
       {/* RIGHT PANEL: Shopping Cart & Direct Checkout */}
-      <div className="w-full md:w-96 bg-white border border-slate-200 rounded-3xl flex flex-col min-w-0 shadow-sm overflow-hidden">
+      <div className="w-full md:w-[320px] lg:w-[350px] xl:w-[384px] bg-white border border-slate-200 rounded-3xl flex flex-col min-w-0 shadow-sm overflow-hidden">
         {/* Cart Header */}
-        <div className="p-4 border-b border-slate-200 flex justify-between items-center bg-slate-50/80">
+        <div className="p-3.5 border-b border-slate-200 flex justify-between items-center bg-slate-50/80">
           <div className="flex items-center space-x-2 rtl:space-x-reverse">
             <div className="p-1.5 rounded-lg bg-sky-100 text-sky-600">
               <ShoppingCart className="h-4 w-4" />
@@ -366,26 +396,26 @@ export const POSTerminalPage: React.FC = () => {
         </div>
 
         {/* Cart Line Items */}
-        <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5">
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {cart.map((item, idx) => {
             const lineSub = item.quantity * item.unitPrice - item.discount;
             return (
               <div
                 key={idx}
-                className="p-3.5 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-2xl space-y-2.5 text-xs transition-colors"
+                className="p-3 bg-slate-50/70 hover:bg-slate-50 border border-slate-200 rounded-2xl space-y-2 text-xs transition-colors"
               >
-                <div className="flex justify-between font-bold">
-                  <span className="truncate w-44 text-slate-900 font-bold">
+                <div className="flex justify-between items-center font-bold gap-1.5">
+                  <span className="flex-1 min-w-0 truncate text-slate-900 font-bold">
                     {language === 'ar' ? (item.product.name_ar || item.product.name_en) : item.product.name_en}
                   </span>
-                  <span className="text-emerald-600 font-mono text-sm font-bold">
+                  <span className="text-emerald-600 font-mono text-xs sm:text-sm font-bold shrink-0">
                     {formatCurrency(lineSub)}
                   </span>
                 </div>
 
                 {/* Weight & Quantity Controls */}
-                <div className="flex items-center justify-between pt-1">
-                  <div className="flex items-center space-x-1 rtl:space-x-reverse bg-white rounded-xl p-1 border border-slate-200 shadow-xs">
+                <div className="flex items-center justify-between gap-1 pt-1">
+                  <div className="flex items-center space-x-0.5 rtl:space-x-reverse bg-white rounded-xl p-0.5 border border-slate-200 shadow-xs">
                     <button
                       onClick={() =>
                         updateCartItem(idx, 'quantity', Math.max(0.05, Math.round((item.quantity - 0.25) * 100) / 100))
@@ -393,7 +423,7 @@ export const POSTerminalPage: React.FC = () => {
                       className="p-1 hover:text-sky-600 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                       title="-0.25 Kg"
                     >
-                      <Minus className="h-3.5 w-3.5" />
+                      <Minus className="h-3 w-3" />
                     </button>
                     <div className="flex items-center">
                       <input
@@ -402,9 +432,9 @@ export const POSTerminalPage: React.FC = () => {
                         min="0.01"
                         value={item.quantity}
                         onChange={(e) => updateCartItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                        className="w-14 text-center bg-transparent font-bold font-mono focus:outline-none text-slate-900 text-xs"
+                        className="w-11 text-center bg-transparent font-bold font-mono focus:outline-none text-slate-900 text-[11px]"
                       />
-                      <span className="text-[10px] text-slate-500 font-semibold pr-1 rtl:pr-0 rtl:pl-1">
+                      <span className="text-[9px] text-slate-500 font-semibold pr-0.5 rtl:pr-0 rtl:pl-0.5">
                         {item.product.base_unit_id === 'Kg' ? (language === 'ar' ? 'كجم' : 'Kg') : (language === 'ar' ? 'قطعة' : 'Pc')}
                       </span>
                     </div>
@@ -415,13 +445,13 @@ export const POSTerminalPage: React.FC = () => {
                       className="p-1 hover:text-sky-600 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
                       title="+0.25 Kg"
                     >
-                      <Plus className="h-3.5 w-3.5" />
+                      <Plus className="h-3 w-3" />
                     </button>
                   </div>
 
                   {/* Price per Unit (FCFA) */}
                   <div
-                    className="flex items-center space-x-1 rtl:space-x-reverse bg-white rounded-xl px-2 py-1 border border-slate-200 hover:border-emerald-500 transition-colors shadow-xs"
+                    className="flex items-center space-x-0.5 rtl:space-x-reverse bg-white rounded-xl px-1.5 py-1 border border-slate-200 hover:border-emerald-500 transition-colors shadow-xs"
                     title={language === 'ar' ? 'تعديل السعر للوحدة' : 'Editable unit price'}
                   >
                     <input
@@ -432,17 +462,17 @@ export const POSTerminalPage: React.FC = () => {
                       onChange={(e) =>
                         updateCartItem(idx, 'unitPrice', parseFloat(e.target.value) || 0)
                       }
-                      className="w-14 text-center bg-transparent font-bold font-mono focus:outline-none text-emerald-600 text-xs"
+                      className="w-12 text-center bg-transparent font-bold font-mono focus:outline-none text-emerald-600 text-[11px]"
                     />
-                    <span className="text-[10px] text-slate-400 font-mono">FCFA</span>
+                    <span className="text-[9px] text-slate-400 font-mono">F</span>
                   </div>
 
                   {/* Line Item Discount */}
                   <div
-                    className="flex items-center space-x-1 rtl:space-x-reverse bg-white rounded-xl px-2 py-1 border border-slate-200 hover:border-amber-500 transition-colors shadow-xs"
+                    className="flex items-center space-x-0.5 rtl:space-x-reverse bg-white rounded-xl px-1.5 py-1 border border-slate-200 hover:border-amber-500 transition-colors shadow-xs"
                     title={language === 'ar' ? 'خصم الصنف (FCFA)' : 'Item discount (FCFA)'}
                   >
-                    <Tag className="h-3 w-3 text-amber-500" />
+                    <Tag className="h-3 w-3 text-amber-500 shrink-0" />
                     <input
                       type="number"
                       step="any"
@@ -452,7 +482,7 @@ export const POSTerminalPage: React.FC = () => {
                         updateCartItem(idx, 'discount', Math.max(0, parseFloat(e.target.value) || 0))
                       }
                       placeholder="0"
-                      className="w-12 text-center bg-transparent font-bold font-mono focus:outline-none text-amber-600 text-xs"
+                      className="w-10 text-center bg-transparent font-bold font-mono focus:outline-none text-amber-600 text-[11px]"
                     />
                   </div>
 

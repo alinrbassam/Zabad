@@ -4,10 +4,11 @@ import { useThemeStore } from '../../stores/useThemeStore';
 import { useLanguageStore } from '../../stores/useLanguageStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCommercialStore } from '../../stores/useCommercialStore';
+import { useZoomStore } from '../../stores/useZoomStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
-import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export const TopBar: React.FC = () => {
   const { language, setLanguage, t } = useLanguageStore();
   const { activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
   const { updateEvent, isInstallingUpdate, installUpdate } = useCommercialStore();
+  const { zoom, zoomIn, zoomOut, resetZoom } = useZoomStore();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
@@ -145,6 +147,46 @@ export const TopBar: React.FC = () => {
             title={t('system')}
           >
             <Monitor className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
+        {/* Screen Zoom Controls */}
+        <div
+          className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 space-x-0.5 rtl:space-x-reverse text-xs"
+          title={
+            language === 'ar'
+              ? 'تكبير/تصغير الشاشة (Ctrl - / Ctrl +)'
+              : language === 'fr'
+              ? 'Zoom écran (Ctrl - / Ctrl +)'
+              : 'Screen Zoom (Ctrl - / Ctrl +)'
+          }
+        >
+          <button
+            onClick={zoomOut}
+            className="p-1 hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded transition-colors"
+            title="Zoom - (Ctrl -)"
+          >
+            <ZoomOut className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={resetZoom}
+            className="px-1.5 py-0.5 text-[11px] font-mono font-bold hover:bg-white dark:hover:bg-slate-700 text-sky-600 dark:text-sky-400 rounded transition-colors"
+            title={
+              language === 'ar'
+                ? 'إعادة الضبط إلى 100% (Ctrl 0)'
+                : language === 'fr'
+                ? 'Réinitialiser le zoom (Ctrl 0)'
+                : 'Reset zoom (Ctrl 0)'
+            }
+          >
+            {zoom}%
+          </button>
+          <button
+            onClick={zoomIn}
+            className="p-1 hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded transition-colors"
+            title="Zoom + (Ctrl +)"
+          >
+            <ZoomIn className="h-3.5 w-3.5" />
           </button>
         </div>
 

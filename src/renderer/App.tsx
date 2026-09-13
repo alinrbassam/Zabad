@@ -18,6 +18,7 @@ import { useAuthStore } from './stores/useAuthStore';
 import { useConfigStore } from './stores/useConfigStore';
 import { useThemeStore } from './stores/useThemeStore';
 import { useCommercialStore } from './stores/useCommercialStore';
+import { useZoomStore } from './stores/useZoomStore';
 import { RouteDefinition } from '@shared/types/module';
 
 import { DashboardPage } from './pages/DashboardPage';
@@ -120,6 +121,7 @@ export const App: React.FC = () => {
     checkLicense();
 
     const cleanupUpdater = useCommercialStore.getState().initUpdateListeners();
+    const cleanupZoom = useZoomStore.getState().initZoom();
 
     // Always reset to Cashier mode and navigate to /pos on app launch
     useAuthStore.getState().setRoleMode('cashier');
@@ -136,6 +138,7 @@ export const App: React.FC = () => {
       });
       return () => {
         cleanupUpdater();
+        cleanupZoom();
       };
     }
 
@@ -165,6 +168,7 @@ export const App: React.FC = () => {
 
     return () => {
       cleanupUpdater();
+      cleanupZoom();
     };
   }, [loadConfig, checkSession, checkLicense]);
 
