@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { usePOSStore } from '@stores/usePOSStore';
 import { useProductStore } from '@stores/useProductStore';
 import { useAuthStore } from '@stores/useAuthStore';
@@ -23,6 +23,7 @@ import {
   RotateCcw,
   Fish,
   Tag,
+  Package,
 } from 'lucide-react';
 
 // Default Fish Products for instant store catalog (Prices in FCFA)
@@ -135,7 +136,7 @@ export const POSTerminalPage: React.FC = () => {
     isLoading,
   } = usePOSStore();
 
-  const { products, loadProducts } = useProductStore();
+  const { products, categories: dbCategories, loadProducts, loadMetadata } = useProductStore();
   const { user } = useAuthStore();
   const { language } = useLanguageStore();
   const { zoom, zoomIn, zoomOut, resetZoom } = useZoomStore();
@@ -151,7 +152,15 @@ export const POSTerminalPage: React.FC = () => {
 
   useEffect(() => {
     loadProducts('');
-  }, [loadProducts]);
+    loadMetadata();
+
+    const handleFocus = () => {
+      loadProducts('');
+      loadMetadata();
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [loadProducts, loadMetadata]);
 
   useEffect(() => {
     if (productSearch.length > 1) {
@@ -192,6 +201,42 @@ export const POSTerminalPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleHoldSale]);
 
+  const categories = useMemo(() => {
+    const hasDbCategories = dbCategories && dbCategories.length > 0;
+    const allChip = {
+      id: 'all',
+      labelEn: hasDbCategories ? '🏷️ All Products' : '🐟 All Seafood',
+      labelAr: hasDbCategories ? '🏷️ جميع الأصناف' : '🐟 جميع المأكولات',
+      labelFr: hasDbCategories ? '🏷️ Tous les produits' : '🐟 Tous les poissons',
+    };
+
+    if (hasDbCategories) {
+      const dynamicList = dbCategories.map((c) => ({
+        id: c.id,
+        labelEn: c.name_en,
+        labelAr: c.name_ar || c.name_en,
+        labelFr: c.name_en || c.name_ar,
+      }));
+      return [allChip, ...dynamicList];
+    }
+
+    return [
+      allChip,
+      { id: 'fresh', labelEn: 'Fresh Fish', labelAr: 'أسماك طازجة', labelFr: 'Poisson Frais' },
+      { id: 'fillet', labelEn: 'Fillets & Cuts', labelAr: 'فيليه وقطع', labelFr: 'Filets & Tranches' },
+      { id: 'shrimp', labelEn: 'Shrimp & Shellfish', labelAr: 'روبيان وقشريات', labelFr: 'Crevettes & Crustacés' },
+      { id: 'extras', labelEn: 'Spices & Extras', labelAr: 'توابل وملحقات', labelFr: 'Épices & Extras' },
+    ];
+  }, [dbCategories]);
+
+  useEffect(() => {
+    if (selectedCategory !== 'all' && !categories.some((c) => c.id === selectedCategory)) {
+      setSelectedCategory('all');
+    }
+  }, [categories, selectedCategory]);
+
+  const selectedCatObj = categories.find((c) => c.id === selectedCategory);
+
   // Combine DB products with default Fish products if DB is empty
   const displayProducts: ProductEntity[] = (
     products.length > 0 ? products : (DEFAULT_FISH_PRODUCTS as ProductEntity[])
@@ -205,6 +250,11 @@ export const POSTerminalPage: React.FC = () => {
     const matchesCategory =
       selectedCategory === 'all' ||
       p.category_id === selectedCategory ||
+      p.subcategory_id === selectedCategory ||
+      (selectedCatObj && (
+        (p.category_id && p.category_id.toLowerCase() === selectedCatObj.labelEn.toLowerCase()) ||
+        (p.category_id && p.category_id.toLowerCase() === selectedCatObj.labelAr.toLowerCase())
+      )) ||
       (selectedCategory === 'fresh' && (p.name_en?.toLowerCase().includes('fish') || p.name_en?.toLowerCase().includes('sea') || p.name_en?.toLowerCase().includes('salmon'))) ||
       (selectedCategory === 'shrimp' && (p.name_en?.toLowerCase().includes('shrimp') || p.name_en?.toLowerCase().includes('calamari'))) ||
       (selectedCategory === 'fillet' && (p.name_en?.toLowerCase().includes('fillet') || p.name_en?.toLowerCase().includes('steak'))) ||
@@ -212,14 +262,6 @@ export const POSTerminalPage: React.FC = () => {
 
     return matchesSearch && matchesCategory;
   });
-
-  const categories = [
-    { id: 'all', labelEn: '🐟 All Seafood', labelAr: '🐟 جميع المأكولات' },
-    { id: 'fresh', labelEn: 'Fresh Fish', labelAr: 'أسماك طازجة' },
-    { id: 'fillet', labelEn: 'Fillets & Cuts', labelAr: 'فيليه وقطع' },
-    { id: 'shrimp', labelEn: 'Shrimp & Shellfish', labelAr: 'روبيان وقشريات' },
-    { id: 'extras', labelEn: 'Spices & Extras', labelAr: 'توابل وملحقات' },
-  ];
 
   const calculateTotals = () => {
     let subtotal = 0;
@@ -284,8 +326,10 @@ export const POSTerminalPage: React.FC = () => {
                 onChange={(e) => setProductSearch(e.target.value)}
                 placeholder={
                   language === 'ar'
-                    ? 'بحث سريع بالاسم (سالمون، دنيس، قاروص، روبيان)...'
-                    : 'Quick search fish (Salmon, Sea Bream, Sea Bass, Shrimp)...'
+                    ? 'بحث سريع بالاسم أو الكود (سالمون، حمص، روبيان)...'
+                    : language === 'fr'
+                    ? 'Recherche rapide par nom ou code (Saumon, Homos, etc.)...'
+                    : 'Quick search by name or code (Salmon, Homos, Shrimp)...'
                 }
                 className="w-full bg-transparent text-xs sm:text-sm focus:outline-none text-slate-900 placeholder-slate-400"
                 autoFocus
@@ -332,44 +376,92 @@ export const POSTerminalPage: React.FC = () => {
                   : 'bg-white text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200 shadow-sm'
               }`}
             >
-              {language === 'ar' ? cat.labelAr : cat.labelEn}
+              {language === 'ar'
+                ? cat.labelAr
+                : language === 'fr'
+                ? cat.labelFr || cat.labelEn
+                : cat.labelEn}
             </button>
           ))}
         </div>
 
         {/* Product Catalog Cards Grid */}
-        <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pr-1">
-          {displayProducts.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => addToCart(p, 1.0)}
-              className="group relative bg-white hover:bg-sky-50/40 border border-slate-200 hover:border-sky-400 p-3.5 rounded-2xl cursor-pointer transition-all flex flex-col justify-between space-y-2.5 select-none active:scale-[0.98] shadow-sm hover:shadow-md"
-            >
-              <div>
-                <div className="flex items-start justify-between gap-1 mb-2">
-                  <div className="rounded-xl bg-sky-50 p-2 text-sky-600 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-xs">
-                    <Fish className="h-4 w-4" />
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-semibold font-mono">
-                    {p.base_unit_id === 'Kg' ? (language === 'ar' ? 'بالكيلو' : '/Kg') : (language === 'ar' ? 'بالقطعة' : '/Pc')}
-                  </span>
-                </div>
-                <h4 className="text-xs font-bold text-slate-900 group-hover:text-sky-600 leading-snug">
-                  {language === 'ar' ? (p.name_ar || p.name_en) : p.name_en}
-                </h4>
-              </div>
-
-              <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {language === 'ar' ? 'السعر:' : 'Price:'}
-                </span>
-                <span className="text-sm sm:text-base font-extrabold text-emerald-600 font-mono tracking-tight">
-                  {formatCurrency(p.selling_price || 0)}
-                </span>
-              </div>
+        {displayProducts.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-white border border-slate-200 rounded-3xl">
+            <div className="p-4 bg-slate-50 text-slate-400 rounded-2xl mb-3">
+              <Package className="h-8 w-8 text-slate-400" />
             </div>
-          ))}
-        </div>
+            <p className="text-sm font-bold text-slate-700">
+              {language === 'ar'
+                ? 'لا توجد منتجات في هذا التصنيف أو البحث'
+                : language === 'fr'
+                ? 'Aucun produit trouvé dans cette catégorie ou recherche'
+                : 'No products found in this category or search'}
+            </p>
+            <p className="text-xs text-slate-400 mt-1">
+              {language === 'ar'
+                ? 'يمكنك إضافة أصناف جديدة وتعيين هذا القسم لها من إدارة المخزون'
+                : language === 'fr'
+                ? 'Vous pouvez ajouter de nouveaux articles et leur attribuer cette catégorie'
+                : 'You can add new items and assign this category in Inventory'}
+            </p>
+          </div>
+        ) : (
+          <div className="flex-1 overflow-y-auto grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 pr-1">
+            {displayProducts.map((p) => {
+              const isFish =
+                p.name_en?.toLowerCase().includes('fish') ||
+                p.name_en?.toLowerCase().includes('salmon') ||
+                p.name_en?.toLowerCase().includes('shrimp') ||
+                p.name_en?.toLowerCase().includes('calamari') ||
+                p.name_en?.toLowerCase().includes('seabass') ||
+                p.name_en?.toLowerCase().includes('bream') ||
+                p.name_ar?.includes('سمك') ||
+                p.name_ar?.includes('سالمون') ||
+                p.name_ar?.includes('روبيان') ||
+                p.category_id === 'fresh' ||
+                p.category_id === 'shrimp' ||
+                p.category_id === 'fillet';
+
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => addToCart(p, 1.0)}
+                  className="group relative bg-white hover:bg-sky-50/40 border border-slate-200 hover:border-sky-400 p-3.5 rounded-2xl cursor-pointer transition-all flex flex-col justify-between space-y-2.5 select-none active:scale-[0.98] shadow-sm hover:shadow-md"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-1 mb-2">
+                      <div className="rounded-xl bg-sky-50 p-2 text-sky-600 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-xs">
+                        {isFish ? <Fish className="h-4 w-4" /> : <Tag className="h-4 w-4" />}
+                      </div>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-semibold font-mono">
+                        {p.base_unit_id === 'Kg'
+                          ? language === 'ar'
+                            ? 'بالكيلو'
+                            : '/Kg'
+                          : language === 'ar'
+                          ? 'بالقطعة'
+                          : '/Pc'}
+                      </span>
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-900 group-hover:text-sky-600 leading-snug">
+                      {language === 'ar' ? p.name_ar || p.name_en : p.name_en}
+                    </h4>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-baseline justify-between">
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {language === 'ar' ? 'السعر:' : 'Price:'}
+                    </span>
+                    <span className="text-sm sm:text-base font-extrabold text-emerald-600 font-mono tracking-tight">
+                      {formatCurrency(p.selling_price || 0)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* RIGHT PANEL: Shopping Cart & Direct Checkout */}
