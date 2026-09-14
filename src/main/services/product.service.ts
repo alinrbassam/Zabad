@@ -214,4 +214,17 @@ export class ProductService {
       details: `Archived product ${product.name_en} (${product.sku})`,
     });
   }
+
+  public deleteProduct(id: string, userId?: string): void {
+    const product = this.productRepo.findById(id);
+    if (!product) throw new Error('Product not found');
+
+    this.productRepo.softDelete(id);
+    this.auditRepo.logAction({
+      user_id: userId,
+      action: 'PRODUCT_DELETED',
+      module: 'Inventory',
+      details: `Deleted product ${product.name_en} (${product.sku})`,
+    });
+  }
 }

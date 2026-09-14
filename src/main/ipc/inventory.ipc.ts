@@ -114,6 +114,21 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
     },
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.PRODUCTS_DELETE,
+    async (_, id: string, userId?: string): Promise<ApiResponse> => {
+      try {
+        productService.deleteProduct(id, userId);
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: { code: 'PRODUCT_DELETE_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
   // Categories
   ipcMain.handle(IPC_CHANNELS.CATEGORIES_LIST, async (): Promise<ApiResponse> => {
     try {
@@ -163,17 +178,20 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
     },
   );
 
-  ipcMain.handle(IPC_CHANNELS.CATEGORIES_DELETE, async (_, id: string): Promise<ApiResponse> => {
-    try {
-      categoryService.deleteCategory(id);
-      return { success: true };
-    } catch (err) {
-      return {
-        success: false,
-        error: { code: 'CATEGORY_DELETE_ERROR', message: (err as Error).message },
-      };
-    }
-  });
+  ipcMain.handle(
+    IPC_CHANNELS.CATEGORIES_DELETE,
+    async (_, id: string, forceDeleteProducts?: boolean): Promise<ApiResponse> => {
+      try {
+        categoryService.deleteCategory(id, forceDeleteProducts);
+        return { success: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: { code: 'CATEGORY_DELETE_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
 
   // Brands
   ipcMain.handle(IPC_CHANNELS.BRANDS_LIST, async (): Promise<ApiResponse> => {

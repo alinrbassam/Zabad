@@ -41,6 +41,7 @@ export const IPC_CHANNELS = {
   PRODUCTS_CREATE: 'products:create',
   PRODUCTS_UPDATE: 'products:update',
   PRODUCTS_ARCHIVE: 'products:archive',
+  PRODUCTS_DELETE: 'products:delete',
   PRODUCTS_SEARCH: 'products:search',
 
   CATEGORIES_LIST: 'categories:list',

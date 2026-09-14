@@ -50,14 +50,24 @@ export const CategoriesPage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, force = false) => {
     try {
       if (window.api?.deleteCategory) {
-        const res = await window.api.deleteCategory(id);
+        const res = await window.api.deleteCategory(id, force);
         if (res.success) {
           loadMetadata();
         } else {
-          alert(res.error?.message || 'Cannot delete category');
+          const msg = res.error?.message || '';
+          if (msg.toLowerCase().includes('contains') && msg.toLowerCase().includes('product')) {
+            const confirmed = window.confirm(
+              'This category contains products. Do you want to delete this category along with all its products?\n\nCe département contient des articles. Voulez-vous supprimer cette catégorie ainsi que tous ses articles ?'
+            );
+            if (confirmed) {
+              await handleDelete(id, true);
+            }
+          } else {
+            alert(msg || 'Cannot delete category');
+          }
         }
       }
     } catch (err) {

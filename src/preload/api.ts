@@ -42,6 +42,7 @@ const IPC_CHANNELS = {
   PRODUCTS_CREATE: 'products:create',
   PRODUCTS_UPDATE: 'products:update',
   PRODUCTS_ARCHIVE: 'products:archive',
+  PRODUCTS_DELETE: 'products:delete',
   PRODUCTS_SEARCH: 'products:search',
 
   CATEGORIES_LIST: 'categories:list',
@@ -292,6 +293,8 @@ export const api = {
     ipcRenderer.invoke(IPC_CHANNELS.PRODUCTS_UPDATE, payload, userId),
   archiveProduct: (id: string, userId?: string): Promise<ApiResponse> =>
     ipcRenderer.invoke(IPC_CHANNELS.PRODUCTS_ARCHIVE, id, userId),
+  deleteProduct: (id: string, userId?: string): Promise<ApiResponse> =>
+    ipcRenderer.invoke(IPC_CHANNELS.PRODUCTS_DELETE, id, userId),
 
   getCategories: (): Promise<ApiResponse<CategoryEntity[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_LIST),
@@ -301,8 +304,8 @@ export const api = {
     payload: Partial<CategoryInput> & { id: string },
   ): Promise<ApiResponse<CategoryEntity>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_UPDATE, payload),
-  deleteCategory: (id: string): Promise<ApiResponse> =>
-    ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, id),
+  deleteCategory: (id: string, forceDeleteProducts?: boolean): Promise<ApiResponse> =>
+    ipcRenderer.invoke(IPC_CHANNELS.CATEGORIES_DELETE, id, forceDeleteProducts),
 
   getBrands: (): Promise<ApiResponse<BrandEntity[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.BRANDS_LIST),

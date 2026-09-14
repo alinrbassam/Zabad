@@ -228,13 +228,13 @@ export const Sidebar: React.FC = () => {
         } bg-[#080d19]`}
       >
         <div className="flex items-center space-x-2.5 rtl:space-x-reverse min-w-0">
-          <div className="h-9 w-9 bg-gradient-to-tr from-sky-500 via-cyan-500 to-blue-600 rounded-xl flex items-center justify-center font-black text-white text-lg shadow-md shadow-cyan-500/25 shrink-0">
-            🐟
+          <div className="h-9 w-9 bg-gradient-to-tr from-sky-500 via-cyan-500 to-blue-600 rounded-xl flex items-center justify-center font-black text-white text-base shadow-md shadow-cyan-500/25 shrink-0">
+            K
           </div>
           {!isCollapsed && (
             <div className="min-w-0 truncate">
               <h2 className="text-sm font-black text-white tracking-wide flex items-center space-x-1 rtl:space-x-reverse">
-                <span>{language === 'ar' ? 'نظام زَبَد' : 'Zabad POS'}</span>
+                <span>{language === 'ar' ? 'نظام خليل' : 'Khalil POS'}</span>
                 <span className="text-[9px] bg-cyan-500/20 text-cyan-400 font-mono px-1 py-0.2 rounded">v2</span>
               </h2>
               <span className="text-[10px] text-cyan-400/90 font-medium truncate block">

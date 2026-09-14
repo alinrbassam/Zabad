@@ -5,8 +5,10 @@ import { CategoryEntity } from '@shared/types';
 
 export class CategoryService {
   private categoryRepo: CategoryRepository;
+  private db: Database.Database;
 
   constructor(db: Database.Database) {
+    this.db = db;
     this.categoryRepo = new CategoryRepository(db);
   }
 
@@ -41,12 +43,19 @@ export class CategoryService {
     });
   }
 
-  public deleteCategory(id: string): void {
+  public deleteCategory(id: string, forceDeleteProducts = false): void {
     const count = this.categoryRepo.countProductsInCategory(id);
     if (count > 0) {
-      throw new Error(
-        `Cannot delete category because it contains ${count} active product(s). Please reassign products first.`,
-      );
+      if (!forceDeleteProducts) {
+        throw new Error(
+          `Cannot delete category because it contains ${count} active product(s). Please delete or reassign products first.`,
+        );
+      }
+      this.db
+        .prepare(
+          `UPDATE products SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE category_id = ? OR subcategory_id = ?`,
+        )
+        .run(id, id);
     }
     this.categoryRepo.softDelete(id);
   }

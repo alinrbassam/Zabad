@@ -125,14 +125,14 @@ export const LoginPage: React.FC = () => {
         <div className="flex items-center justify-between border-b border-slate-700 pb-4">
           <div className="flex items-center space-x-3 rtl:space-x-reverse">
             <div className="h-10 w-10 bg-gradient-to-tr from-sky-500 via-cyan-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-cyan-500/25">
-              🐟
+              K
             </div>
             <div>
               <h2 className="text-base font-black text-white tracking-wide">
-                {language === 'ar' ? 'نظام زَبَد للأسماك' : 'Zabad POS'}
+                {language === 'ar' ? 'نظام خليل' : 'Khalil POS'}
               </h2>
               <span className="text-[10px] text-cyan-400 font-medium block">
-                {language === 'ar' ? 'نظام إدارة مبيعات الأسماك الطازجة' : 'Fresh Seafood Retail System'}
+                {language === 'ar' ? 'نظام إدارة المبيعات والمخزون' : 'POS & Retail System'}
               </span>
             </div>
           </div>

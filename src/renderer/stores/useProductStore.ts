@@ -21,6 +21,7 @@ interface ProductState {
   loadMetadata: () => Promise<void>;
   createProduct: (input: ProductInput, userId?: string) => Promise<ProductEntity | null>;
   archiveProduct: (id: string, userId?: string) => Promise<boolean>;
+  deleteProduct: (id: string, userId?: string) => Promise<boolean>;
 }
 
 export const useProductStore = create<ProductState>((set, get) => ({
@@ -102,6 +103,29 @@ export const useProductStore = create<ProductState>((set, get) => ({
           return true;
         } else {
           set({ error: res.error?.message || 'Failed archiving product' });
+          return false;
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteProduct: async (id: string, userId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.deleteProduct) {
+        const res = await window.api.deleteProduct(id, userId);
+        if (res.success) {
+          await get().loadProducts();
+          await get().loadMetadata();
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Failed deleting product' });
           return false;
         }
       }

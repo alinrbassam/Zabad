@@ -509,21 +509,26 @@ export const POSTerminalPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-1 pt-1">
                   <div className="flex items-center space-x-0.5 rtl:space-x-reverse bg-white rounded-xl p-0.5 border border-slate-200 shadow-xs">
                     <button
-                      onClick={() =>
-                        updateCartItem(idx, 'quantity', Math.max(0.05, Math.round((item.quantity - 0.25) * 100) / 100))
-                      }
+                      onClick={() => {
+                        const isKg = item.product.base_unit_id === 'Kg' && item.product.allow_decimal_qty === 1;
+                        const min = isKg ? 0.05 : 1;
+                        updateCartItem(idx, 'quantity', Math.max(min, Math.round((item.quantity - 1) * 100) / 100));
+                      }}
                       className="p-1 hover:text-sky-600 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                      title="-0.25 Kg"
+                      title="-1"
                     >
                       <Minus className="h-3 w-3" />
                     </button>
                     <div className="flex items-center">
                       <input
                         type="number"
-                        step="0.05"
-                        min="0.01"
+                        step={item.product.base_unit_id === 'Kg' ? 'any' : '1'}
+                        min={item.product.base_unit_id === 'Kg' ? '0.05' : '1'}
                         value={item.quantity}
-                        onChange={(e) => updateCartItem(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          updateCartItem(idx, 'quantity', isNaN(val) ? 0 : val);
+                        }}
                         className="w-11 text-center bg-transparent font-bold font-mono focus:outline-none text-slate-900 text-[11px]"
                       />
                       <span className="text-[9px] text-slate-500 font-semibold pr-0.5 rtl:pr-0 rtl:pl-0.5">
@@ -532,10 +537,10 @@ export const POSTerminalPage: React.FC = () => {
                     </div>
                     <button
                       onClick={() =>
-                        updateCartItem(idx, 'quantity', Math.round((item.quantity + 0.25) * 100) / 100)
+                        updateCartItem(idx, 'quantity', Math.round((item.quantity + 1) * 100) / 100)
                       }
                       className="p-1 hover:text-sky-600 text-slate-500 hover:bg-slate-100 rounded-lg transition-colors"
-                      title="+0.25 Kg"
+                      title="+1"
                     >
                       <Plus className="h-3 w-3" />
                     </button>
@@ -584,19 +589,6 @@ export const POSTerminalPage: React.FC = () => {
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
-                </div>
-
-                {/* Quick Weight Adjust Chips */}
-                <div className="flex space-x-1.5 rtl:space-x-reverse pt-1 text-[10px]">
-                  {[0.5, 1.0, 1.5, 2.0].map((preset) => (
-                    <button
-                      key={preset}
-                      onClick={() => updateCartItem(idx, 'quantity', preset)}
-                      className="px-2 py-0.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-200 text-slate-600 font-mono hover:text-slate-900 transition-colors shadow-xs"
-                    >
-                      {preset} {language === 'ar' ? 'كجم' : 'Kg'}
-                    </button>
-                  ))}
                 </div>
               </div>
             );
@@ -702,8 +694,8 @@ export const POSTerminalPage: React.FC = () => {
         isOpen={Boolean(lastCompletedSale)}
         onClose={() => setLastCompletedSale(null)}
         sale={lastCompletedSale}
-        businessName={language === 'ar' ? 'متجر زَبَد للأسماك الطازجة' : 'Zabad Fresh Seafood'}
-        businessAddress={language === 'ar' ? 'سوق السمك المركزي' : 'Seafood Harbor Market'}
+        businessName={language === 'ar' ? 'متجر خليل' : 'Khalil Store'}
+        businessAddress={language === 'ar' ? 'السوق المركزي' : 'Central Market'}
       />
     </div>
   );

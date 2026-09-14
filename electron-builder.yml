@@ -1,6 +1,6 @@
 appId: com.zabad.pos
-productName: Zabad POS
-copyright: Copyright © 2026 Zabad Retail Systems
+productName: Khalil POS
+copyright: Copyright © 2026 Khalil Retail Systems
 directories:
   output: dist-release
 files:
@@ -29,8 +29,8 @@ nsis:
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Zabad POS
-  uninstallDisplayName: Zabad POS
+  shortcutName: Khalil POS
+  uninstallDisplayName: Khalil POS
 
 extraMetadata:
   main: dist/main/index.js
