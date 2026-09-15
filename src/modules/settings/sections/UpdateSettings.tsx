@@ -21,8 +21,11 @@ export const UpdateSettings: React.FC = () => {
 
   useEffect(() => {
     const unsub = initUpdateListeners();
+    checkForUpdates()
+      .then(() => setChecked(true))
+      .catch(() => {});
     return () => unsub();
-  }, [initUpdateListeners]);
+  }, [initUpdateListeners, checkForUpdates]);
 
   const handleCheck = async () => {
     await checkForUpdates();
@@ -36,7 +39,7 @@ export const UpdateSettings: React.FC = () => {
   const isDownloaded = updateEvent?.status === 'downloaded';
   const isDownloading = updateEvent?.status === 'downloading';
   const hasUpdate = Boolean(updateStatus?.hasUpdate || updateEvent?.status === 'available' || isDownloaded);
-  const targetVersion = updateEvent?.version || updateStatus?.latestVersion || '1.0.2';
+  const targetVersion = updateEvent?.version || updateStatus?.latestVersion || '1.0.7';
   const progressPercent = updateEvent?.progress?.percent ?? 0;
 
   return (
@@ -46,7 +49,7 @@ export const UpdateSettings: React.FC = () => {
           Mises à jour logicielles / Application Updates
         </h2>
         <p className="text-xs text-slate-500">
-          Mettez à jour Zabad POS directement en 1 clic sans interruption des ventes et sans quitter l'application.
+          Mettez à jour Khalil POS directement en 1 clic sans interruption des ventes et sans quitter l'application.
         </p>
       </div>
 
@@ -56,8 +59,17 @@ export const UpdateSettings: React.FC = () => {
           <div className="flex justify-between items-center p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800 text-xs">
             <div>
               <span className="text-slate-500 block">Version installée actuellement :</span>
-              <span className="font-bold text-base text-slate-900 dark:text-slate-100">
-                {updateStatus?.currentVersion ? `v${updateStatus.currentVersion}` : 'v1.0.0'}
+              <span className="font-bold text-base text-slate-900 dark:text-slate-100 flex items-center gap-2">
+                {updateStatus?.currentVersion ? (
+                  `v${updateStatus.currentVersion}`
+                ) : isLoading ? (
+                  <span className="inline-flex items-center text-xs text-slate-400 font-normal">
+                    <RefreshCw className="h-3 w-3 animate-spin mr-1.5" />
+                    Vérification...
+                  </span>
+                ) : (
+                  'v1.0.7'
+                )}
               </span>
             </div>
 

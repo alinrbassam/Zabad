@@ -1,4 +1,5 @@
 import os from 'node:os';
+import { app } from 'electron';
 import Database from 'better-sqlite3';
 import { logger } from './logger.service';
 
@@ -54,8 +55,17 @@ export class MaintenanceService {
       .get() as { created_at: string } | undefined;
     const sqliteVer = this.db.prepare('SELECT sqlite_version() as ver').get() as { ver: string };
 
+    let appVersion = '1.0.7';
+    try {
+      if (typeof app !== 'undefined' && app.getVersion) {
+        appVersion = app.getVersion();
+      }
+    } catch {
+      // fallback
+    }
+
     return {
-      appVersion: '1.0.0',
+      appVersion,
       electronVersion: process.versions.electron || 'N/A',
       nodeVersion: process.versions.node || 'N/A',
       sqliteVersion: sqliteVer.ver,

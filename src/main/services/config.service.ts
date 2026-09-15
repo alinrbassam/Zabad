@@ -18,7 +18,7 @@ const defaultConfig: AppConfig = {
   backupPath: '',
   receiptHeader: 'Welcome to our store',
   receiptFooter: 'Thank you for shopping with us!',
-  appVersion: '1.0.0',
+  appVersion: typeof app !== 'undefined' && app.getVersion ? app.getVersion() : '1.0.7',
 };
 
 export class ConfigService {

@@ -300,7 +300,7 @@ export const useCommercialStore = create<CommercialState>((set, get) => ({
           const current = state.updateStatus;
           const newStatus = current ? { ...current } : {
             hasUpdate: false,
-            currentVersion: '1.0.0',
+            currentVersion: '',
             latestVersion: '',
             releaseNotes: '',
           };
