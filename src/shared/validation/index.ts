@@ -404,18 +404,19 @@ export const ExpenseSchema = z.object({
 export const POSRefundSchema = z.object({
   saleId: z.string().min(1, 'Sale reference is required'),
   reason: z.string().min(1, 'Refund reason is required'),
-  refundMethod: z.enum(['Cash', 'Card', 'Store Credit']).default('Cash'),
+  refundMethod: z.string().default('Cash'),
   items: z
     .array(
       z.object({
-        saleItemId: z.string().min(1),
-        productId: z.string().min(1),
+        saleItemId: z.string().optional(),
+        productId: z.string().optional(),
         batchId: z.string().optional(),
-        returnedQty: z.number().min(0.0001),
-        refundAmount: z.number().min(0),
+        returnedQty: z.number().optional(),
+        refundAmount: z.number().optional(),
       }),
     )
-    .min(1, 'At least one line to refund is required'),
+    .optional()
+    .default([]),
 });
 
 export type SetupWizardPayloadInput = z.infer<typeof SetupWizardPayloadSchema>;
