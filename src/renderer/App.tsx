@@ -212,13 +212,13 @@ export const App: React.FC = () => {
               element={activeRoleMode === 'cashier' ? <Navigate to="/pos" replace /> : <DashboardPage />}
             />
             {allRoutes.map((r: RouteDefinition) => {
-              const isPosRoute = r.path.startsWith('/pos');
+              const isCashierAllowed = r.path === '/pos' || r.path === '/pos/debts';
               return (
                 <Route
                   key={r.path}
                   path={r.path}
                   element={
-                    isPosRoute ? (
+                    isCashierAllowed ? (
                       <r.component />
                     ) : (
                       <ManagerRouteGuard>

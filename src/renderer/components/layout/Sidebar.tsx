@@ -184,12 +184,22 @@ export const Sidebar: React.FC = () => {
     },
   ];
 
-  const visibleSections = navSections.filter((sec) => {
-    if (activeRoleMode === 'cashier') {
-      return sec.id === 'sell';
-    }
-    return true;
-  });
+  const visibleSections = navSections
+    .filter((sec) => {
+      if (activeRoleMode === 'cashier') {
+        return sec.id === 'sell';
+      }
+      return true;
+    })
+    .map((sec) => {
+      if (activeRoleMode === 'cashier') {
+        return {
+          ...sec,
+          items: sec.items.filter((item) => item.id !== 'sales-history'),
+        };
+      }
+      return sec;
+    });
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     sell: true,

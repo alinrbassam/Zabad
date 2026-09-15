@@ -51,7 +51,7 @@ interface AuthState {
   checkSession: () => Promise<boolean>;
 }
 
-export const CASHIER_PERMISSIONS = ['pos.checkout', 'pos.sales', 'pos.debts'];
+export const CASHIER_PERMISSIONS = ['pos.checkout', 'pos.debts'];
 export const MANAGER_PERMISSIONS = [
   'system.all',
   'products.create',
@@ -62,6 +62,7 @@ export const MANAGER_PERMISSIONS = [
   'categories.manage',
   'pos.checkout',
   'pos.sales',
+  'pos.sales_history',
   'pos.debts',
   'expenses.manage',
   'reports.view',
