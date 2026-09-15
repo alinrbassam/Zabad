@@ -37,7 +37,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       if (window.api?.searchProducts) {
-        const res = await window.api.searchProducts(query, 100, 0);
+        const res = await window.api.searchProducts(query, 500, 0);
         if (res.success && res.data) {
           set({ products: res.data as ProductEntity[] });
         }
@@ -121,6 +121,9 @@ export const useProductStore = create<ProductState>((set, get) => ({
       if (window.api?.deleteProduct) {
         const res = await window.api.deleteProduct(id, userId);
         if (res.success) {
+          set((state) => ({
+            products: state.products.filter((p) => p.id !== id),
+          }));
           await get().loadProducts();
           await get().loadMetadata();
           return true;

@@ -16,16 +16,16 @@ import { formatCurrency } from '@renderer/utils/currency';
 export const ProductsPage: React.FC = () => {
   const navigate = useNavigate();
   const { products, loadProducts, deleteProduct } = useProductStore();
-  const { user, permissions } = useAuthStore();
+  const { user, permissions, activeRoleMode } = useAuthStore();
   const { language } = useLanguageStore();
   const [search, setSearch] = useState('');
   const [productToDelete, setProductToDelete] = useState<ProductEntity | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const canViewCost =
-    permissions.includes('products.view_cost') || permissions.includes('system.all');
-  const canManageProducts =
-    permissions.includes('products.create') || permissions.includes('system.all');
+    activeRoleMode === 'manager' ||
+    permissions.includes('products.view_cost') ||
+    permissions.includes('system.all');
 
   useEffect(() => {
     loadProducts(search);
@@ -124,28 +124,24 @@ export const ProductsPage: React.FC = () => {
       header: language === 'ar' ? 'الإجراءات' : 'Actions',
       render: (p) => (
         <div className="flex items-center space-x-1.5 rtl:space-x-reverse">
-          {canManageProducts && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(`/inventory/products/edit/${p.id}`)}
-                title={language === 'ar' ? 'تعديل المنتج' : language === 'fr' ? 'Modifier' : 'Edit Product'}
-                className="hover:bg-slate-100 text-sky-600"
-              >
-                <Edit className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setProductToDelete(p)}
-                title={language === 'ar' ? 'حذف المنتج' : language === 'fr' ? 'Supprimer' : 'Delete Product'}
-                className="hover:bg-rose-50 text-rose-500 hover:text-rose-600"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </>
-          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/inventory/products/edit/${p.id}`)}
+            title={language === 'ar' ? 'تعديل المنتج' : language === 'fr' ? 'Modifier' : 'Edit Product'}
+            className="hover:bg-sky-100 dark:hover:bg-sky-950/60 text-sky-600 p-1.5 rounded-lg transition-colors"
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setProductToDelete(p)}
+            title={language === 'ar' ? 'حذف المنتج' : language === 'fr' ? 'Supprimer' : 'Delete Product'}
+            className="hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-500 hover:text-rose-600 p-1.5 rounded-lg transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
@@ -166,16 +162,14 @@ export const ProductsPage: React.FC = () => {
           </div>
         </div>
 
-        {canManageProducts && (
-          <Button
-            onClick={() => navigate('/inventory/products/new')}
-            size="md"
-            className="flex items-center space-x-2"
-          >
-            <Plus className="h-4 w-4" />
-            <span>Add Product</span>
-          </Button>
-        )}
+        <Button
+          onClick={() => navigate('/inventory/products/new')}
+          size="md"
+          className="flex items-center space-x-2 bg-sky-600 hover:bg-sky-500 font-bold"
+        >
+          <Plus className="h-4 w-4" />
+          <span>Add Product</span>
+        </Button>
       </div>
 
       <Card>
@@ -233,9 +227,19 @@ export const ProductsPage: React.FC = () => {
               onClick={async () => {
                 if (productToDelete) {
                   setIsDeleting(true);
-                  await deleteProduct(productToDelete.id, user?.id);
+                  const ok = await deleteProduct(productToDelete.id, user?.id);
                   setIsDeleting(false);
-                  setProductToDelete(null);
+                  if (ok) {
+                    setProductToDelete(null);
+                  } else {
+                    alert(
+                      language === 'ar'
+                        ? 'تعذر حذف المنتج'
+                        : language === 'fr'
+                        ? "Impossible de supprimer l'article"
+                        : 'Failed to delete product'
+                    );
+                  }
                 }
               }}
               className="bg-rose-600 hover:bg-rose-700 text-white font-bold"

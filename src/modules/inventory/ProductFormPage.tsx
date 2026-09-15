@@ -10,11 +10,12 @@ import { Input } from '@components/ui/Input';
 import { Button } from '@components/ui/Button';
 import { Card } from '@components/ui/Card';
 import { Alert } from '@components/ui/Alert';
+import { Trash2 } from 'lucide-react';
 
 export const ProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { categories, units, loadMetadata, createProduct, isLoading, error } =
+  const { categories, units, loadMetadata, createProduct, deleteProduct, isLoading, error } =
     useProductStore();
   const { user } = useAuthStore();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -204,13 +205,41 @@ export const ProductFormPage: React.FC = () => {
           </div>
         </Card>
 
-        <div className="flex justify-end space-x-3 pt-2">
-          <Button type="button" variant="outline" onClick={() => navigate('/inventory/products')}>
-            Cancel
-          </Button>
-          <Button type="submit" isLoading={isLoading} size="lg" className="bg-sky-600 hover:bg-sky-500 font-bold">
-            Save Product ✓
-          </Button>
+        <div className="flex justify-between items-center pt-2">
+          {id ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                const confirmed = window.confirm(
+                  'Are you sure you want to delete this product?\n\nÊtes-vous sûr de vouloir supprimer cet article ?'
+                );
+                if (confirmed) {
+                  const ok = await deleteProduct(id, user?.id);
+                  if (ok) {
+                    navigate('/inventory/products');
+                  } else {
+                    alert('Could not delete product.');
+                  }
+                }
+              }}
+              className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40 flex items-center space-x-1.5 font-semibold"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Delete Product</span>
+            </Button>
+          ) : (
+            <div />
+          )}
+
+          <div className="flex items-center space-x-3">
+            <Button type="button" variant="outline" onClick={() => navigate('/inventory/products')}>
+              Cancel
+            </Button>
+            <Button type="submit" isLoading={isLoading} size="lg" className="bg-sky-600 hover:bg-sky-500 font-bold">
+              Save Product ✓
+            </Button>
+          </div>
         </div>
       </form>
     </div>
