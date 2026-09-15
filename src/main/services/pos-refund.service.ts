@@ -124,13 +124,13 @@ export class POSRefundService {
     }
 
     const insertRefund = this.db.prepare(`
-      INSERT INTO sales_refunds (id, refund_number, sale_id, refund_amount, reason, cashier_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sales_refunds (id, refund_number, sale_id, reason, refund_amount, refund_method, processed_by, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertItem = this.db.prepare(`
-      INSERT INTO sales_refund_items (id, refund_id, product_id, batch_id, unit_id, quantity, unit_price, line_total)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sales_refund_items (id, refund_id, sale_item_id, product_id, batch_id, returned_qty, refund_amount)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     const updateSaleStatus = this.db.prepare(`
@@ -142,8 +142,9 @@ export class POSRefundService {
         refundId,
         refundNumber,
         input.saleId,
-        totalRefund,
         input.reason || 'Customer Return',
+        totalRefund,
+        input.refundMethod || 'Cash',
         userId || 'cashier',
         now,
       );
@@ -152,11 +153,10 @@ export class POSRefundService {
         insertItem.run(
           crypto.randomUUID(),
           refundId,
+          item.saleItemId || crypto.randomUUID(),
           item.productId,
           item.batchId || null,
-          item.unitId || 'default-unit',
           item.returnedQty,
-          item.refundAmount,
           item.refundAmount,
         );
 

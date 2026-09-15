@@ -60,12 +60,14 @@ export const SalesHistoryPage: React.FC = () => {
           : `Refund processed successfully for ${sale.invoice_number}. Items have been returned to stock.`
       );
     } else {
+      const storeErr = usePOSStore.getState().error;
+      const detail = storeErr ? ` (${storeErr})` : '';
       alert(
         language === 'ar'
-          ? 'تعذر معالجة الاسترجاع.'
+          ? `تعذر معالجة الاسترجاع${detail}.`
           : language === 'fr'
-          ? 'Échec du traitement du remboursement.'
-          : 'Failed to process refund.'
+          ? `Échec du traitement du remboursement${detail}.`
+          : `Failed to process refund${detail}.`
       );
     }
   };
