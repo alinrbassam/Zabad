@@ -358,9 +358,259 @@ export class SupabaseSyncService {
     }
   }
 
+  public static readonly SYNCED_TABLES = [
+    'categories',
+    'units',
+    'suppliers',
+    'products',
+    'product_barcodes',
+    'customers',
+    'purchase_orders',
+    'purchase_order_items',
+    'goods_receipts',
+    'goods_receipt_items',
+    'purchase_returns',
+    'purchase_return_items',
+    'sales_orders',
+    'sales_order_items',
+    'sales_payments',
+    'sales_refunds',
+    'sales_refund_items',
+    'customer_debts',
+    'debt_payments',
+    'operational_expenses',
+    'inventory_batches',
+    'inventory_movements',
+    'inventory_balances',
+  ];
+
+  public exportLocalData(): Record<string, any[]> {
+    const data: Record<string, any[]> = {};
+    for (const table of SupabaseSyncService.SYNCED_TABLES) {
+      try {
+        const stmt = this.db.prepare(`SELECT * FROM ${table}`);
+        data[table] = stmt.all() as any[];
+      } catch {
+        data[table] = [];
+      }
+    }
+    return data;
+  }
+
+  public mergeRemoteData(remoteTables: Record<string, any[]>): number {
+    let rowsMerged = 0;
+    const executeTx = this.db.transaction(() => {
+      try {
+        this.db.pragma('foreign_keys = OFF');
+      } catch {}
+
+      for (const table of SupabaseSyncService.SYNCED_TABLES) {
+        const rows = remoteTables[table];
+        if (!Array.isArray(rows) || rows.length === 0) continue;
+
+        let colInfo: Array<{ name: string }> = [];
+        try {
+          colInfo = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+        } catch {
+          continue;
+        }
+        if (!colInfo || colInfo.length === 0) continue;
+
+        const colNames = colInfo.map((c) => c.name);
+        const placeholders = colNames.map(() => '?').join(', ');
+        const insertStmt = this.db.prepare(
+          `INSERT OR REPLACE INTO ${table} (${colNames.join(', ')}) VALUES (${placeholders})`
+        );
+
+        let checkStmt: Database.Statement | null = null;
+        try {
+          checkStmt = this.db.prepare(`SELECT * FROM ${table} WHERE id = ?`);
+        } catch {}
+
+        for (const row of rows) {
+          if (!row || typeof row !== 'object' || !row.id) continue;
+
+          let shouldWrite = true;
+          if (checkStmt) {
+            try {
+              const existing = checkStmt.get(row.id) as Record<string, any> | undefined;
+              if (existing) {
+                const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
+                const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+                if (existingTime >= incomingTime) {
+                  shouldWrite = false;
+                }
+              }
+            } catch {
+              shouldWrite = true;
+            }
+          }
+
+          if (shouldWrite) {
+            const values = colNames.map((col) => (row[col] !== undefined ? row[col] : null));
+            insertStmt.run(...values);
+            rowsMerged++;
+          }
+        }
+      }
+
+      try {
+        this.db.pragma('foreign_keys = ON');
+      } catch {}
+    });
+
+    try {
+      executeTx();
+    } catch (err) {
+      logger.error('SupabaseSync', 'Failed to merge remote tables', err);
+      try {
+        this.db.pragma('foreign_keys = ON');
+      } catch {}
+      throw err;
+    }
+
+    return rowsMerged;
+  }
+
+  /**
+   * True Two-Way Sync between multiple laptops:
+   * 1. Pulls changes from all other peer laptops in Supabase Storage.
+   * 2. Merges rows (products, suppliers, purchases, sales, customers, debt).
+   * 3. Exports local changes and uploads to its own device packet.
+   * 4. Updates overall store metadata and database backup.
+   */
+  public async syncTwoWay(): Promise<{
+    success: boolean;
+    message: string;
+    timestamp?: string;
+    remoteMeta?: RemoteSyncMeta | null;
+  }> {
+    const config = this.getConfig();
+    if (!config.enabled) {
+      return { success: false, message: 'Cloud sync is currently disabled in Settings.' };
+    }
+
+    const myDeviceId = this.licensingService.getDeviceFingerprint();
+    const now = new Date().toISOString();
+    let totalMerged = 0;
+
+    try {
+      logger.info('SupabaseSync', `Initiating Two-Way Sync for device: ${myDeviceId}...`);
+
+      // 1. List peer device packets
+      const listUrl = `${config.supabaseUrl}/storage/v1/object/list/${BUCKET_NAME}`;
+      const listRes = await fetch(listUrl, {
+        method: 'POST',
+        headers: {
+          apikey: config.supabaseKey,
+          Authorization: `Bearer ${config.supabaseKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ prefix: 'devices', limit: 100 }),
+      });
+
+      let foundPeer = false;
+      if (listRes.ok) {
+        const fileList = (await listRes.json()) as Array<{ name: string }>;
+        for (const file of fileList) {
+          const fileName = file.name;
+          const remoteDeviceId = fileName.replace('.json', '');
+          if (remoteDeviceId && remoteDeviceId !== myDeviceId && fileName.endsWith('.json')) {
+            foundPeer = true;
+            logger.info('SupabaseSync', `Pulling updates from peer device: ${remoteDeviceId}`);
+            const fetchUrl = `${config.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/devices/${fileName}`;
+            const devRes = await fetch(fetchUrl, {
+              headers: {
+                apikey: config.supabaseKey,
+                Authorization: `Bearer ${config.supabaseKey}`,
+              },
+              cache: 'no-store',
+            });
+            if (devRes.ok) {
+              const remotePayload = (await devRes.json()) as { tables?: Record<string, any[]> };
+              if (remotePayload && remotePayload.tables) {
+                const count = this.mergeRemoteData(remotePayload.tables);
+                totalMerged += count;
+                logger.info('SupabaseSync', `Merged ${count} records from ${remoteDeviceId}`);
+              }
+            }
+          }
+        }
+      }
+
+      // If no peer packets were found yet, but a store snapshot exists and local DB has no products
+      if (!foundPeer) {
+        try {
+          const prodCount = (this.db.prepare('SELECT COUNT(*) as c FROM products').get() as { c: number })?.c || 0;
+          if (prodCount === 0) {
+            logger.info('SupabaseSync', 'Local database has 0 products, bootstrapping from store snapshot...');
+            await this.pullStoreSnapshot();
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      // 2. Export local database records and upload to devices/${myDeviceId}.json
+      const localTables = this.exportLocalData();
+      const localPayload = {
+        deviceId: myDeviceId,
+        timestamp: now,
+        tables: localTables,
+      };
+
+      const uploadUrl = `${config.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/devices/${myDeviceId}.json`;
+      const upRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          apikey: config.supabaseKey,
+          Authorization: `Bearer ${config.supabaseKey}`,
+          'Content-Type': 'application/json',
+          'x-upsert': 'true',
+        },
+        body: JSON.stringify(localPayload),
+      });
+
+      if (!upRes.ok) {
+        const errTxt = await upRes.text().catch(() => '');
+        throw new Error(`Device upload failed (HTTP ${upRes.status}): ${errTxt}`);
+      }
+
+      // 3. Upload store snapshot and update sync_meta.json
+      await this.uploadStoreSnapshot().catch((err) => {
+        logger.warn('SupabaseSync', 'Background store snapshot upload skipped', err);
+      });
+
+      const meta = await this.fetchRemoteMeta();
+
+      this.updateConfig({
+        lastSyncAt: now,
+        lastStatus: 'success',
+        remoteMeta: meta,
+      });
+
+      const message =
+        totalMerged > 0
+          ? `Synchronisation bidirectionnelle réussie (${totalMerged} modifications synchronisées) ✓`
+          : 'Synchronisation bidirectionnelle réussie ✓';
+
+      return {
+        success: true,
+        message,
+        timestamp: now,
+        remoteMeta: meta,
+      };
+    } catch (err: any) {
+      const msg = err.message || 'Unknown network error';
+      logger.error('SupabaseSync', 'Two-way sync failed', err);
+      this.updateConfig({ lastStatus: `Erreur: ${msg}` });
+      return { success: false, message: msg };
+    }
+  }
+
   /**
    * Main sync method called by UI or automatic timer:
-   * Runs upload if store, runs pull if manager.
+   * Performs full two-way synchronization.
    */
   public async syncNow(): Promise<{
     success: boolean;
@@ -368,11 +618,6 @@ export class SupabaseSyncService {
     timestamp?: string;
     remoteMeta?: RemoteSyncMeta | null;
   }> {
-    const config = this.getConfig();
-    if (config.role === 'manager') {
-      return this.pullStoreSnapshot();
-    } else {
-      return this.uploadStoreSnapshot();
-    }
+    return this.syncTwoWay();
   }
 }

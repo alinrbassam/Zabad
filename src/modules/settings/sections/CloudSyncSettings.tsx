@@ -11,8 +11,7 @@ import {
   Briefcase,
   Clock,
   ShieldCheck,
-  Download,
-  Upload,
+  RefreshCw,
 } from 'lucide-react';
 import { useLanguageStore } from '../../../renderer/stores/useLanguageStore';
 
@@ -288,15 +287,13 @@ export const CloudSyncSettings: React.FC = () => {
                 disabled={isSyncing}
                 className="flex items-center gap-2 bg-sky-600 hover:bg-sky-500 text-white"
               >
-                {syncRole === 'store' ? <Upload className="h-4 w-4" /> : <Download className="h-4 w-4" />}
+                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
                 <span>
-                  {syncRole === 'store'
-                    ? language === 'fr'
-                      ? 'Envoyer les données au Cloud maintenant'
-                      : 'Upload Store Data Now'
+                  {language === 'ar'
+                    ? 'مزامنة ثنائية الاتجاه الآن (الكمبيوتر 1 ↔ الكمبيوتر 2)'
                     : language === 'fr'
-                    ? 'Télécharger les données du magasin'
-                    : 'Pull Store Data from Cloud'}
+                    ? 'Synchroniser maintenant (PC 1 ↔ PC 2)'
+                    : 'Sync Both Laptops Now (Two-Way)'}
                 </span>
               </Button>
 

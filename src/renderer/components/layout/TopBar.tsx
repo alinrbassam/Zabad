@@ -365,13 +365,11 @@ export const TopBar: React.FC = () => {
               : 'bg-slate-50 text-slate-700 dark:bg-slate-900/60 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
           }`}
           title={
-            syncRole === 'manager'
-              ? language === 'fr'
-                ? `Synchroniser avec le magasin (Dernier: ${syncStatusText || 'Non synchronisé'})`
-                : `Sync from store (Last: ${syncStatusText || 'Not synced'})`
+            language === 'ar'
+              ? `مزامنة سحابية ثنائية الاتجاه (آخر مزامنة: ${syncStatusText || 'لم تتم المزامنة'})`
               : language === 'fr'
-              ? `Envoyer les données au Cloud (Dernier: ${syncStatusText || 'Non synchronisé'})`
-              : `Upload store data to Cloud (Last: ${syncStatusText || 'Not synced'})`
+              ? `Synchronisation bidirectionnelle dans le Cloud (Dernier: ${syncStatusText || 'Non synchronisé'})`
+              : `Two-Way Cloud Sync (Last: ${syncStatusText || 'Not synced'})`
           }
         >
           <Cloud className={`h-3.5 w-3.5 ${isSyncingCloud ? 'animate-spin text-sky-600' : syncRole === 'manager' ? 'text-emerald-600' : 'text-sky-600'}`} />
