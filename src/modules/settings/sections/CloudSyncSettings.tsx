@@ -7,13 +7,12 @@ import {
   CheckCircle2,
   Lock,
   Unlock,
-  Store,
-  Briefcase,
   Clock,
   ShieldCheck,
   RefreshCw,
 } from 'lucide-react';
 import { useLanguageStore } from '../../../renderer/stores/useLanguageStore';
+import { useProductStore } from '../../../renderer/stores/useProductStore';
 
 const DEFAULT_SUPABASE_URL = 'https://zlewivlmnwjloksdercw.supabase.co';
 const DEFAULT_SUPABASE_KEY =
@@ -108,6 +107,10 @@ export const CloudSyncSettings: React.FC = () => {
         if (res.data?.remoteMeta) {
           setRemoteMeta(res.data.remoteMeta);
         }
+        try {
+          useProductStore.getState().loadProducts();
+          useProductStore.getState().loadMetadata();
+        } catch {}
       } else {
         const errMsg = res?.data?.message || res?.error?.message || 'Erreur réseau';
         setSyncMessage(`Échec: ${errMsg}`);
@@ -141,88 +144,34 @@ export const CloudSyncSettings: React.FC = () => {
         </p>
       </div>
 
-      {/* Role Selection Card */}
-      <Card title={language === 'fr' ? 'Rôle de cet Ordinateur' : 'Role of this Computer'}>
+      {/* Unified Live Direct Cloud Sync Card */}
+      <Card title={language === 'ar' ? 'المزامنة السحابية المباشرة (Supabase)' : language === 'fr' ? 'Synchronisation Totale dans le Cloud (Supabase)' : 'Direct Real-Time Cloud Sync (Supabase)'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Store POS Option */}
-            <div
-              onClick={() => {
-                setSyncRole('store');
-                handleSaveConfig('store');
-              }}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                syncRole === 'store'
-                  ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/30 ring-2 ring-sky-500/20'
-                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2.5 rounded-xl ${
-                    syncRole === 'store' ? 'bg-sky-500 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  <Store className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                    {language === 'fr' ? 'PC Magasin (Caisse Principale)' : 'In-Store POS (Primary)'}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {language === 'fr'
-                      ? 'Cet ordinateur enregistre les ventes et envoie les données vers le cloud.'
-                      : 'This computer processes sales and uploads updates to Supabase.'}
-                  </p>
-                </div>
+          <div className="p-4 rounded-xl border-2 border-sky-500 bg-sky-50/50 dark:bg-sky-950/30">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-sky-500 text-white">
+                <Cloud className="h-5 w-5" />
               </div>
-              {syncRole === 'store' && (
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-sky-600 font-semibold">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{language === 'fr' ? 'Actif sur ce PC' : 'Active on this PC'}</span>
-                </div>
-              )}
+              <div>
+                <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+                  {language === 'ar'
+                    ? 'نظام مشترك ومتزامن بالكامل عبر السحابة'
+                    : language === 'fr'
+                    ? 'Système Multi-PC Synchronisé en Direct'
+                    : 'Unified Real-Time Multi-Laptop System'}
+                </h4>
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {language === 'ar'
+                    ? 'كافة أجهزة الكمبيوتر متصلة بنفس قاعدة البيانات السحابية مباشرة. كل منتج، مورد، عملية بيع أو شراء تتم مزامنتها تلقائياً بين الجهازين.'
+                    : language === 'fr'
+                    ? 'Tous les ordinateurs sont connectés à la même base cloud. Chaque produit, fournisseur, vente ou achat est synchronisé instantanément.'
+                    : 'All laptops read and write to the same cloud database. Every product, supplier, sale, or purchase syncs across both laptops automatically.'}
+                </p>
+              </div>
             </div>
-
-            {/* Remote Manager Option */}
-            <div
-              onClick={() => {
-                setSyncRole('manager');
-                handleSaveConfig('manager');
-              }}
-              className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                syncRole === 'manager'
-                  ? 'border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 ring-2 ring-emerald-500/20'
-                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2.5 rounded-xl ${
-                    syncRole === 'manager'
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  <Briefcase className="h-5 w-5" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100">
-                    {language === 'fr' ? 'PC Gérant à Distance' : 'Remote Manager (Home / Abroad)'}
-                  </h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5">
-                    {language === 'fr'
-                      ? 'Pour le gérant en déplacement : télécharge l’état du magasin en 2 secondes.'
-                      : 'For the owner traveling or at home: pulls store reports and sales.'}
-                  </p>
-                </div>
-              </div>
-              {syncRole === 'manager' && (
-                <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
-                  <CheckCircle2 className="h-4 w-4" />
-                  <span>{language === 'fr' ? 'Actif sur ce PC' : 'Active on this PC'}</span>
-                </div>
-              )}
+            <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>{language === 'fr' ? 'Base de données partagée en ligne (Actif sur ce PC)' : 'Shared Online Database (Active on this PC)'}</span>
             </div>
           </div>
 

@@ -5,6 +5,7 @@ import { useLanguageStore } from '../../stores/useLanguageStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCommercialStore } from '../../stores/useCommercialStore';
 import { useZoomStore } from '../../stores/useZoomStore';
+import { useProductStore } from '../../stores/useProductStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
@@ -56,6 +57,10 @@ export const TopBar: React.FC = () => {
         if (res?.success) {
           const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
           setSyncStatusText(nowStr);
+          try {
+            useProductStore.getState().loadProducts();
+            useProductStore.getState().loadMetadata();
+          } catch {}
         }
       }
     } catch {

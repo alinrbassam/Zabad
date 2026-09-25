@@ -473,13 +473,14 @@ export class SupabaseSyncService {
   }
 
   /**
-   * True Two-Way Sync between multiple laptops:
-   * 1. Pulls changes from all other peer laptops in Supabase Storage.
-   * 2. Merges rows (products, suppliers, purchases, sales, customers, debt).
-   * 3. Exports local changes and uploads to its own device packet.
-   * 4. Updates overall store metadata and database backup.
+   * Direct Unified Cloud Sync:
+   * 1. Downloads the latest master cloud database (khalil_store.db).
+   * 2. Merges all cloud tables (suppliers, products, purchases, sales, customers, debt) into local SQLite.
+   * 3. Uploads the merged state back to Supabase Storage.
+   * 4. Updates sync_meta.json.
+   * Both laptops read and write to the same online data in real-time.
    */
-  public async syncTwoWay(): Promise<{
+  public async syncUnifiedCloud(): Promise<{
     success: boolean;
     message: string;
     timestamp?: string;
@@ -490,97 +491,53 @@ export class SupabaseSyncService {
       return { success: false, message: 'Cloud sync is currently disabled in Settings.' };
     }
 
-    const myDeviceId = this.licensingService.getDeviceFingerprint();
+    const userDataPath = app ? app.getPath('userData') : process.cwd();
+    const tempDir = path.join(userDataPath, 'temp_sync');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    const cloudDbPath = path.join(tempDir, `cloud_download_${Date.now()}.db`);
     const now = new Date().toISOString();
     let totalMerged = 0;
 
     try {
-      logger.info('SupabaseSync', `Initiating Two-Way Sync for device: ${myDeviceId}...`);
+      logger.info('SupabaseSync', 'Starting Direct Unified Cloud Sync...');
 
-      // 1. List peer device packets
-      const listUrl = `${config.supabaseUrl}/storage/v1/object/list/${BUCKET_NAME}`;
-      const listRes = await fetch(listUrl, {
-        method: 'POST',
+      // 1. Download latest cloud DB
+      const dbDownloadUrl = `${config.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/khalil_store.db`;
+      const response = await fetch(dbDownloadUrl, {
         headers: {
           apikey: config.supabaseKey,
           Authorization: `Bearer ${config.supabaseKey}`,
-          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ prefix: 'devices', limit: 100 }),
+        cache: 'no-store',
       });
 
-      let foundPeer = false;
-      if (listRes.ok) {
-        const fileList = (await listRes.json()) as Array<{ name: string }>;
-        for (const file of fileList) {
-          const fileName = file.name;
-          const remoteDeviceId = fileName.replace('.json', '');
-          if (remoteDeviceId && remoteDeviceId !== myDeviceId && fileName.endsWith('.json')) {
-            foundPeer = true;
-            logger.info('SupabaseSync', `Pulling updates from peer device: ${remoteDeviceId}`);
-            const fetchUrl = `${config.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/devices/${fileName}`;
-            const devRes = await fetch(fetchUrl, {
-              headers: {
-                apikey: config.supabaseKey,
-                Authorization: `Bearer ${config.supabaseKey}`,
-              },
-              cache: 'no-store',
-            });
-            if (devRes.ok) {
-              const remotePayload = (await devRes.json()) as { tables?: Record<string, any[]> };
-              if (remotePayload && remotePayload.tables) {
-                const count = this.mergeRemoteData(remotePayload.tables);
-                totalMerged += count;
-                logger.info('SupabaseSync', `Merged ${count} records from ${remoteDeviceId}`);
-              }
-            }
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        fs.writeFileSync(cloudDbPath, Buffer.from(arrayBuffer));
+
+        // Read all rows from cloud database
+        const cloudDb = new Database(cloudDbPath, { readonly: true });
+        const remoteTables: Record<string, any[]> = {};
+        for (const table of SupabaseSyncService.SYNCED_TABLES) {
+          try {
+            remoteTables[table] = cloudDb.prepare(`SELECT * FROM ${table}`).all() as any[];
+          } catch {
+            remoteTables[table] = [];
           }
         }
+        cloudDb.close();
+
+        // Merge cloud records into local database
+        totalMerged = this.mergeRemoteData(remoteTables);
+        logger.info('SupabaseSync', `Successfully merged ${totalMerged} records from cloud into local database`);
       }
 
-      // If no peer packets were found yet, but a store snapshot exists and local DB has no products
-      if (!foundPeer) {
-        try {
-          const prodCount = (this.db.prepare('SELECT COUNT(*) as c FROM products').get() as { c: number })?.c || 0;
-          if (prodCount === 0) {
-            logger.info('SupabaseSync', 'Local database has 0 products, bootstrapping from store snapshot...');
-            await this.pullStoreSnapshot();
-          }
-        } catch {
-          // ignore
-        }
-      }
+      // 2. Upload merged database snapshot back to Supabase
+      await this.uploadStoreSnapshot();
 
-      // 2. Export local database records and upload to devices/${myDeviceId}.json
-      const localTables = this.exportLocalData();
-      const localPayload = {
-        deviceId: myDeviceId,
-        timestamp: now,
-        tables: localTables,
-      };
-
-      const uploadUrl = `${config.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/devices/${myDeviceId}.json`;
-      const upRes = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          apikey: config.supabaseKey,
-          Authorization: `Bearer ${config.supabaseKey}`,
-          'Content-Type': 'application/json',
-          'x-upsert': 'true',
-        },
-        body: JSON.stringify(localPayload),
-      });
-
-      if (!upRes.ok) {
-        const errTxt = await upRes.text().catch(() => '');
-        throw new Error(`Device upload failed (HTTP ${upRes.status}): ${errTxt}`);
-      }
-
-      // 3. Upload store snapshot and update sync_meta.json
-      await this.uploadStoreSnapshot().catch((err) => {
-        logger.warn('SupabaseSync', 'Background store snapshot upload skipped', err);
-      });
-
+      // 3. Fetch remote metadata
       const meta = await this.fetchRemoteMeta();
 
       this.updateConfig({
@@ -591,8 +548,8 @@ export class SupabaseSyncService {
 
       const message =
         totalMerged > 0
-          ? `Synchronisation bidirectionnelle réussie (${totalMerged} modifications synchronisées) ✓`
-          : 'Synchronisation bidirectionnelle réussie ✓';
+          ? `Synchronisation réussie (${totalMerged} éléments synchronisés avec le Cloud) ✓`
+          : 'Synchronisation cloud terminée avec succès ✓';
 
       return {
         success: true,
@@ -602,15 +559,23 @@ export class SupabaseSyncService {
       };
     } catch (err: any) {
       const msg = err.message || 'Unknown network error';
-      logger.error('SupabaseSync', 'Two-way sync failed', err);
+      logger.error('SupabaseSync', 'Unified cloud sync failed', err);
       this.updateConfig({ lastStatus: `Erreur: ${msg}` });
       return { success: false, message: msg };
+    } finally {
+      try {
+        if (fs.existsSync(cloudDbPath)) {
+          fs.unlinkSync(cloudDbPath);
+        }
+      } catch {
+        // ignore
+      }
     }
   }
 
   /**
    * Main sync method called by UI or automatic timer:
-   * Performs full two-way synchronization.
+   * Performs direct unified cloud sync.
    */
   public async syncNow(): Promise<{
     success: boolean;
@@ -618,6 +583,6 @@ export class SupabaseSyncService {
     timestamp?: string;
     remoteMeta?: RemoteSyncMeta | null;
   }> {
-    return this.syncTwoWay();
+    return this.syncUnifiedCloud();
   }
 }
