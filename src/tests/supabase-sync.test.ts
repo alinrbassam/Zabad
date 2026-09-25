@@ -104,4 +104,38 @@ describe('SupabaseSyncService Configuration & Roles', () => {
     expect(config.remoteMeta?.orderCountToday).toBe(25);
     expect(config.lastStatus).toBe('success');
   });
+
+  it('should call mergeRemoteData with foreign_keys disabled before transaction', () => {
+    const pragmaCalls: string[] = [];
+    const testMockDb = {
+      pragma: (arg: string) => {
+        pragmaCalls.push(arg);
+      },
+      prepare: (sql: string) => {
+        if (sql.includes('table_info')) {
+          return {
+            all: () => [
+              { name: 'id', pk: 1 },
+              { name: 'name', pk: 0 },
+            ],
+          };
+        }
+        return {
+          get: () => undefined,
+          run: vi.fn(),
+        };
+      },
+      transaction: (fn: () => void) => () => fn(),
+    };
+
+    const s = new SupabaseSyncService(testMockDb as unknown as Database.Database);
+    const count = s.mergeRemoteData({
+      suppliers: [{ id: 'sup-1', name: 'Bassam' }],
+    });
+
+    expect(count).toBe(1);
+    expect(pragmaCalls).toContain('foreign_keys = OFF');
+    expect(pragmaCalls).toContain('foreign_keys = ON');
+    expect(pragmaCalls.indexOf('foreign_keys = OFF')).toBeLessThan(pragmaCalls.indexOf('foreign_keys = ON'));
+  });
 });

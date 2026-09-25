@@ -428,11 +428,15 @@ export class SupabaseSyncService {
 
   public mergeRemoteData(remoteTables: Record<string, any[]>): number {
     let rowsMerged = 0;
-    const executeTx = this.db.transaction(() => {
-      try {
-        this.db.pragma('foreign_keys = OFF');
-      } catch {}
 
+    // 1. Disable foreign keys BEFORE starting transaction (SQLite ignores foreign_keys pragma inside a transaction)
+    try {
+      this.db.pragma('foreign_keys = OFF');
+    } catch (e) {
+      logger.warn('SupabaseSync', 'Failed to disable foreign keys', e);
+    }
+
+    const executeTx = this.db.transaction(() => {
       for (const table of SupabaseSyncService.SYNCED_TABLES) {
         const rows = remoteTables[table];
         if (!Array.isArray(rows) || rows.length === 0) continue;
@@ -450,64 +454,69 @@ export class SupabaseSyncService {
         const effectivePkCols = pkCols.length > 0 ? pkCols : (colNames.includes('id') ? ['id'] : []);
         if (effectivePkCols.length === 0) continue;
 
-        const placeholders = colNames.map(() => '?').join(', ');
+        const nonPkCols = colNames.filter((c) => !effectivePkCols.includes(c));
+        const insertPlaceholders = colNames.map(() => '?').join(', ');
         const insertStmt = this.db.prepare(
-          `INSERT OR REPLACE INTO ${table} (${colNames.join(', ')}) VALUES (${placeholders})`
+          `INSERT INTO ${table} (${colNames.join(', ')}) VALUES (${insertPlaceholders})`
         );
 
         const whereClause = effectivePkCols.map((c) => `${c} = ?`).join(' AND ');
-        let checkStmt: Database.Statement | null = null;
-        try {
-          checkStmt = this.db.prepare(`SELECT * FROM ${table} WHERE ${whereClause}`);
-        } catch {}
+        const checkStmt = this.db.prepare(`SELECT * FROM ${table} WHERE ${whereClause}`);
+
+        let updateStmt: Database.Statement | null = null;
+        if (nonPkCols.length > 0) {
+          const setClause = nonPkCols.map((c) => `${c} = ?`).join(', ');
+          updateStmt = this.db.prepare(`UPDATE ${table} SET ${setClause} WHERE ${whereClause}`);
+        }
 
         for (const row of rows) {
           if (!row || typeof row !== 'object') continue;
           const pkValues = effectivePkCols.map((c) => row[c]);
           if (pkValues.some((v) => v === undefined || v === null)) continue;
 
-          let shouldWrite = true;
-          if (checkStmt) {
-            try {
-              const existing = checkStmt.get(...pkValues) as Record<string, any> | undefined;
-              if (existing) {
-                const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
-                const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
-                if (existingTime > 0 && incomingTime > 0 && existingTime >= incomingTime) {
-                  // If incoming has deleted_at set and local doesn't, remote takes precedence
-                  if (row.deleted_at && !existing.deleted_at) {
-                    shouldWrite = true;
-                  } else {
-                    shouldWrite = false;
-                  }
-                }
-              }
-            } catch {
-              shouldWrite = true;
-            }
+          let existing: Record<string, any> | undefined;
+          try {
+            existing = checkStmt.get(...pkValues) as Record<string, any> | undefined;
+          } catch {
+            existing = undefined;
           }
 
-          if (shouldWrite) {
-            const values = colNames.map((col) => (row[col] !== undefined ? row[col] : null));
-            insertStmt.run(...values);
+          if (existing) {
+            let shouldWrite = true;
+            const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
+            const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+            if (existingTime > 0 && incomingTime > 0 && existingTime >= incomingTime) {
+              if (row.deleted_at && !existing.deleted_at) {
+                shouldWrite = true;
+              } else {
+                shouldWrite = false;
+              }
+            }
+
+            if (shouldWrite && updateStmt) {
+              const nonPkValues = nonPkCols.map((col) => (row[col] !== undefined ? row[col] : null));
+              updateStmt.run(...nonPkValues, ...pkValues);
+              rowsMerged++;
+            }
+          } else {
+            const allValues = colNames.map((col) => (row[col] !== undefined ? row[col] : null));
+            insertStmt.run(...allValues);
             rowsMerged++;
           }
         }
       }
-
-      try {
-        this.db.pragma('foreign_keys = ON');
-      } catch {}
     });
 
     try {
       executeTx();
     } catch (err) {
       logger.error('SupabaseSync', 'Failed to merge remote tables', err);
+      throw err;
+    } finally {
+      // 2. Re-enable foreign keys outside transaction
       try {
         this.db.pragma('foreign_keys = ON');
       } catch {}
-      throw err;
     }
 
     return rowsMerged;
