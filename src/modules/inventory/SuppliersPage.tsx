@@ -6,7 +6,7 @@ import { Dialog } from '@components/ui/Dialog';
 import { Input } from '@components/ui/Input';
 import { Card } from '@components/ui/Card';
 import { SupplierEntity } from '@shared/types';
-import { Truck, Plus } from 'lucide-react';
+import { Truck, Plus, Trash2 } from 'lucide-react';
 
 export const SuppliersPage: React.FC = () => {
   const { suppliers, loadMetadata } = useProductStore();
@@ -14,6 +14,8 @@ export const SuppliersPage: React.FC = () => {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [contact, setContact] = useState('');
+  const [supplierToDelete, setSupplierToDelete] = useState<SupplierEntity | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     loadMetadata();
@@ -34,6 +36,22 @@ export const SuppliersPage: React.FC = () => {
       setPhone('');
       setContact('');
       loadMetadata();
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!supplierToDelete) return;
+    setIsDeleting(true);
+    try {
+      if ((window as any).api?.deleteSupplier) {
+        await (window as any).api.deleteSupplier(supplierToDelete.id);
+        await loadMetadata();
+      }
+      setSupplierToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete supplier', err);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -61,6 +79,24 @@ export const SuppliersPage: React.FC = () => {
       key: 'phone',
       header: 'Phone',
       render: (s) => <span className="text-slate-500 font-mono text-xs">{s.phone || '—'}</span>,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (s) => (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setSupplierToDelete(s)}
+            className="text-rose-600 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-950/40 p-1.5 h-8 w-8"
+            title="Delete Supplier"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      ),
     },
   ];
 
@@ -120,6 +156,38 @@ export const SuppliersPage: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog
+        isOpen={Boolean(supplierToDelete)}
+        title="Delete Supplier Confirmation"
+        onClose={() => setSupplierToDelete(null)}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            Are you sure you want to delete supplier{' '}
+            <strong className="text-slate-900 dark:text-white font-bold">"{supplierToDelete?.name}"</strong>?
+          </p>
+          <div className="pt-2 flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setSupplierToDelete(null)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              className="bg-rose-600 hover:bg-rose-700 text-white font-bold"
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Supplier'}
+            </Button>
+          </div>
+        </div>
       </Dialog>
     </div>
   );

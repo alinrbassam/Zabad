@@ -50,4 +50,8 @@ export class SupplierService {
       is_active: input.isActive !== undefined ? (input.isActive ? 1 : 0) : undefined,
     });
   }
+
+  public deleteSupplier(id: string): boolean {
+    return this.supplierRepo.softDelete(id);
+  }
 }

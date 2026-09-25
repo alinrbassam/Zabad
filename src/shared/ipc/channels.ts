@@ -59,6 +59,7 @@ export const IPC_CHANNELS = {
   SUPPLIERS_LIST: 'suppliers:list',
   SUPPLIERS_CREATE: 'suppliers:create',
   SUPPLIERS_UPDATE: 'suppliers:update',
+  SUPPLIERS_DELETE: 'suppliers:delete',
 
   BARCODES_LOOKUP: 'barcodes:lookup',
   BARCODES_ADD_ALTERNATE: 'barcodes:add_alternate',

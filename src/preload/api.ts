@@ -60,6 +60,7 @@ const IPC_CHANNELS = {
   SUPPLIERS_LIST: 'suppliers:list',
   SUPPLIERS_CREATE: 'suppliers:create',
   SUPPLIERS_UPDATE: 'suppliers:update',
+  SUPPLIERS_DELETE: 'suppliers:delete',
 
   BARCODES_LOOKUP: 'barcodes:lookup',
   BARCODES_ADD_ALTERNATE: 'barcodes:add_alternate',
@@ -327,6 +328,8 @@ export const api = {
     ipcRenderer.invoke(IPC_CHANNELS.SUPPLIERS_LIST),
   createSupplier: (payload: SupplierInput): Promise<ApiResponse<SupplierEntity>> =>
     ipcRenderer.invoke(IPC_CHANNELS.SUPPLIERS_CREATE, payload),
+  deleteSupplier: (id: string): Promise<ApiResponse<boolean>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SUPPLIERS_DELETE, id),
 
   getStockSummary: (): Promise<
     ApiResponse<{

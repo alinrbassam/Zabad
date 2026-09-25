@@ -280,6 +280,22 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
     },
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.SUPPLIERS_DELETE,
+    async (_, id: string): Promise<ApiResponse> => {
+      try {
+        const res = supplierService.deleteSupplier(id);
+        SupabaseSyncService.triggerDebouncedSync(1000);
+        return { success: true, data: res };
+      } catch (err) {
+        return {
+          success: false,
+          error: { code: 'SUPPLIER_DELETE_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
   // Stock & Dashboard
   ipcMain.handle(IPC_CHANNELS.STOCK_GET_SUMMARY, async (): Promise<ApiResponse> => {
     try {
