@@ -360,11 +360,11 @@ export class SupabaseSyncService {
 
   public static readonly SYNCED_TABLES = [
     'categories',
+    'brands',
     'units',
     'suppliers',
     'products',
     'product_barcodes',
-    'customers',
     'purchase_orders',
     'purchase_order_items',
     'goods_receipts',
@@ -376,10 +376,8 @@ export class SupabaseSyncService {
     'sales_payments',
     'sales_refunds',
     'sales_refund_items',
-    'customer_debts',
-    'debt_payments',
-    'operational_expenses',
-    'inventory_batches',
+    'expenses',
+    'batches',
     'inventory_movements',
     'inventory_balances',
   ];

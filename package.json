@@ -1,7 +1,7 @@
 {
   "name": "zabad-pos",
   "productName": "Khalil POS",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "Zabad Seafood POS & Retail Management System",
   "main": "dist/main/index.js",
   "scripts": {
