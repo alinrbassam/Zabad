@@ -6,7 +6,9 @@ import { logger } from '../services/logger.service';
 
 export class DatabaseConnection {
   private static instance: DatabaseConnection;
-  private db: Database.Database;
+  private rawDb: Database.Database;
+  private proxyDb: Database.Database;
+  private dbPath: string;
 
   private constructor() {
     const userDataPath = app ? app.getPath('userData') : process.cwd();
@@ -14,11 +16,21 @@ export class DatabaseConnection {
     if (!fs.existsSync(dbDir)) {
       fs.mkdirSync(dbDir, { recursive: true });
     }
-    const dbPath = path.join(dbDir, 'zabad.db');
+    this.dbPath = path.join(dbDir, 'zabad.db');
 
-    logger.info('DatabaseConnection', `Connecting to SQLite database at: ${dbPath}`);
-    this.db = new Database(dbPath);
-    this.configure();
+    logger.info('DatabaseConnection', `Connecting to SQLite database at: ${this.dbPath}`);
+    this.rawDb = new Database(this.dbPath);
+    this.configure(this.rawDb);
+
+    this.proxyDb = new Proxy({} as Database.Database, {
+      get: (_target, prop) => {
+        const val = (this.rawDb as any)[prop];
+        if (typeof val === 'function') {
+          return val.bind(this.rawDb);
+        }
+        return val;
+      },
+    });
   }
 
   public static getInstance(): DatabaseConnection {
@@ -29,23 +41,64 @@ export class DatabaseConnection {
   }
 
   public getDatabase(): Database.Database {
-    return this.db;
+    return this.proxyDb;
   }
 
-  private configure(): void {
+  public getRawDatabase(): Database.Database {
+    return this.rawDb;
+  }
+
+  public getDbPath(): string {
+    return this.dbPath;
+  }
+
+  public reloadDatabase(newDbPath?: string): void {
+    logger.info('DatabaseConnection', 'Reloading database connection...');
     try {
-      this.db.pragma('journal_mode = WAL');
-      this.db.pragma('foreign_keys = ON');
-      this.db.pragma('synchronous = NORMAL');
+      if (this.rawDb) {
+        try {
+          this.rawDb.pragma('wal_checkpoint(TRUNCATE)');
+        } catch {
+          // ignore
+        }
+        this.rawDb.close();
+      }
+
+      if (newDbPath && fs.existsSync(newDbPath) && newDbPath !== this.dbPath) {
+        const backupPath = `${this.dbPath}.bak`;
+        try {
+          if (fs.existsSync(this.dbPath)) {
+            fs.copyFileSync(this.dbPath, backupPath);
+          }
+        } catch (e) {
+          logger.warn('DatabaseConnection', 'Could not create .bak backup before swap', e);
+        }
+        fs.copyFileSync(newDbPath, this.dbPath);
+      }
+
+      this.rawDb = new Database(this.dbPath);
+      this.configure(this.rawDb);
+      logger.info('DatabaseConnection', 'Database reloaded successfully.');
+    } catch (err) {
+      logger.error('DatabaseConnection', 'Failed to reload database', err);
+      throw err;
+    }
+  }
+
+  private configure(db: Database.Database): void {
+    try {
+      db.pragma('journal_mode = WAL');
+      db.pragma('foreign_keys = ON');
+      db.pragma('synchronous = NORMAL');
     } catch (err) {
       logger.error('DatabaseConnection', 'Failed configuring SQLite pragmas', err);
     }
   }
 
   public close(): void {
-    if (this.db) {
+    if (this.rawDb) {
       logger.info('DatabaseConnection', 'Closing database connection');
-      this.db.close();
+      this.rawDb.close();
     }
   }
 }

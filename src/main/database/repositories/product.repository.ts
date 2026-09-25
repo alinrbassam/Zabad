@@ -8,6 +8,7 @@ export class ProductRepository extends BaseRepository<ProductEntity> {
     super(db, 'products');
   }
 
+
   public findBySku(sku: string): ProductEntity | null {
     const stmt = this.db.prepare(
       `SELECT * FROM ${this.tableName} WHERE LOWER(sku) = LOWER(?) AND (deleted_at IS NULL OR deleted_at = '')`,

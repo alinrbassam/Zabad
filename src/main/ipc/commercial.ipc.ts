@@ -9,6 +9,7 @@ import { BackupService } from '../services/backup.service';
 import { MaintenanceService } from '../services/maintenance.service';
 import { UpdaterService } from '../services/updater.service';
 import { CloudSyncService } from '../services/cloud-sync.service';
+import { SupabaseSyncService } from '../services/supabase-sync.service';
 import { logger } from '../services/logger.service';
 
 export function registerCommercialIpcHandlers(db: Database.Database): void {
@@ -17,6 +18,7 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
   const maintenanceService = new MaintenanceService(db);
   const updaterService = new UpdaterService();
   const cloudSyncService = new CloudSyncService(db);
+  const supabaseSyncService = new SupabaseSyncService(db);
 
   // Licensing
   ipcMain.handle(IPC_CHANNELS.LICENSING_GET_DEVICE_ID, async (): Promise<ApiResponse<string>> => {
@@ -199,4 +201,42 @@ export function registerCommercialIpcHandlers(db: Database.Database): void {
       return { success: false, error: { code: 'CLOUD_SNAPSHOT_ERROR', message: (err as Error).message } };
     }
   });
+
+  // Supabase Multi-Device Cloud Sync
+  ipcMain.handle(IPC_CHANNELS.SUPABASE_SYNC_GET_CONFIG, async (): Promise<ApiResponse> => {
+    try {
+      const config = supabaseSyncService.getConfig();
+      return { success: true, data: config };
+    } catch (err) {
+      return { success: false, error: { code: 'SUPABASE_CONFIG_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SUPABASE_SYNC_UPDATE_CONFIG, async (_, patch: any): Promise<ApiResponse> => {
+    try {
+      supabaseSyncService.updateConfig(patch);
+      return { success: true, data: supabaseSyncService.getConfig() };
+    } catch (err) {
+      return { success: false, error: { code: 'SUPABASE_UPDATE_CONFIG_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SUPABASE_SYNC_NOW, async (): Promise<ApiResponse> => {
+    try {
+      const result = await supabaseSyncService.syncNow();
+      return { success: result.success, data: result };
+    } catch (err) {
+      return { success: false, error: { code: 'SUPABASE_SYNC_ERROR', message: (err as Error).message } };
+    }
+  });
+
+  ipcMain.handle(IPC_CHANNELS.SUPABASE_SYNC_GET_REMOTE_META, async (): Promise<ApiResponse> => {
+    try {
+      const meta = await supabaseSyncService.fetchRemoteMeta();
+      return { success: true, data: meta };
+    } catch (err) {
+      return { success: false, error: { code: 'SUPABASE_REMOTE_META_ERROR', message: (err as Error).message } };
+    }
+  });
 }
+

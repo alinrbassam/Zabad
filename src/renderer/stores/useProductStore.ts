@@ -20,6 +20,7 @@ interface ProductState {
   loadProducts: (query?: string) => Promise<void>;
   loadMetadata: () => Promise<void>;
   createProduct: (input: ProductInput, userId?: string) => Promise<ProductEntity | null>;
+  updateProduct: (id: string, input: Partial<ProductInput>, userId?: string) => Promise<boolean>;
   archiveProduct: (id: string, userId?: string) => Promise<boolean>;
   deleteProduct: (id: string, userId?: string) => Promise<boolean>;
 }
@@ -88,6 +89,28 @@ export const useProductStore = create<ProductState>((set, get) => ({
     } catch (err) {
       set({ error: (err as Error).message });
       return null;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  updateProduct: async (id: string, input: Partial<ProductInput>, userId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.updateProduct) {
+        const res = await window.api.updateProduct({ id, ...input }, userId);
+        if (res.success && res.data) {
+          await get().loadProducts();
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Failed updating product' });
+          return false;
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
     } finally {
       set({ isLoading: false });
     }

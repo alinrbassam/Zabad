@@ -94,14 +94,19 @@ export class LicensingService {
    */
   public getActiveLicense(): LicenseDetails | null {
     try {
-      const stmt = this.db.prepare(
-        "SELECT * FROM license_info WHERE status = 'Active' ORDER BY activated_at DESC LIMIT 1",
+      const rows = this.db.prepare(
+        "SELECT * FROM license_info WHERE status = 'Active' ORDER BY activated_at DESC",
+      ).all() as LicenseDbRow[];
+      if (!rows || rows.length === 0) return null;
+
+      const currentNormalized = this.normalizeDeviceId(this.getDeviceFingerprint());
+      // Prioritize the license record bound to this specific device fingerprint
+      const matchingRow = rows.find(
+        (r) => this.normalizeDeviceId(r.device_id) === currentNormalized,
       );
-      const row = stmt.get() as LicenseDbRow | undefined;
-      if (!row) return null;
+      const row = matchingRow || rows[0];
 
       // 1. Device binding check
-      const currentNormalized = this.normalizeDeviceId(this.getDeviceFingerprint());
       const licenseNormalized = this.normalizeDeviceId(row.device_id);
       if (licenseNormalized && licenseNormalized !== currentNormalized) {
         logger.warn(
@@ -125,17 +130,17 @@ export class LicensingService {
         }
       }
 
-    // 3. Status check
-    if (row.status !== 'Active') {
-      return null;
-    }
+      // 3. Status check
+      if (row.status !== 'Active') {
+        return null;
+      }
 
-    let modules: string[] = [];
-    try {
-      modules = JSON.parse(row.enabled_modules_json || '[]');
-    } catch {
-      modules = ['pos', 'inventory', 'purchasing', 'expenses', 'reports', 'settings'];
-    }
+      let modules: string[] = [];
+      try {
+        modules = JSON.parse(row.enabled_modules_json || '[]');
+      } catch {
+        modules = ['pos', 'inventory', 'purchasing', 'expenses', 'reports', 'settings'];
+      }
 
       return {
         id: row.id,
@@ -152,6 +157,54 @@ export class LicensingService {
     } catch (err) {
       logger.error('LicensingService', 'Error querying active license from database', err);
       return null;
+    }
+  }
+
+  /**
+   * Exports raw license records for preserving machine activation during database swaps.
+   */
+  public getLicenseRows(): any[] {
+    try {
+      return this.db.prepare('SELECT * FROM license_info').all();
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Restores machine license records after a database hot-swap.
+   */
+  public restoreLicenseRows(rows: any[]): void {
+    if (!rows || rows.length === 0) return;
+    try {
+      for (const r of rows) {
+        this.db
+          .prepare(
+            `
+          INSERT OR REPLACE INTO license_info (
+            id, license_key, customer_name, business_name, device_id,
+            issue_date, expiration_date, license_type, enabled_modules_json,
+            status, activated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+          )
+          .run(
+            r.id,
+            r.license_key,
+            r.customer_name,
+            r.business_name,
+            r.device_id,
+            r.issue_date,
+            r.expiration_date,
+            r.license_type,
+            r.enabled_modules_json,
+            r.status,
+            r.activated_at || new Date().toISOString(),
+          );
+      }
+      logger.info('LicensingService', `Successfully preserved ${rows.length} machine license record(s)`);
+    } catch (err) {
+      logger.warn('LicensingService', 'Failed restoring machine license rows', err);
     }
   }
 

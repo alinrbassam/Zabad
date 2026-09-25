@@ -15,7 +15,7 @@ import { Trash2 } from 'lucide-react';
 export const ProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { categories, units, loadMetadata, createProduct, deleteProduct, isLoading, error } =
+  const { categories, units, loadMetadata, createProduct, updateProduct, deleteProduct, isLoading, error } =
     useProductStore();
   const { user } = useAuthStore();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export const ProductFormPage: React.FC = () => {
     if (id && window.api?.getProductById) {
       window.api.getProductById(id).then((res) => {
         if (res.success && res.data) {
-          const p = res.data as ProductEntity;
+          const p = res.data as ProductEntity & { quantity_on_hand?: number };
           setValue('sku', p.sku);
           setValue('nameEn', p.name_en);
           setValue('nameAr', p.name_ar || p.name_en);
@@ -77,6 +77,7 @@ export const ProductFormPage: React.FC = () => {
           setValue('minSellingPrice', p.min_selling_price || 0);
           setValue('trackInventory', p.track_inventory === 1);
           setValue('reorderLevel', p.reorder_level ?? 100);
+          setValue('openingStockQty', p.quantity_on_hand ?? 0);
         }
       });
     }
@@ -86,7 +87,14 @@ export const ProductFormPage: React.FC = () => {
     setSuccessMsg(null);
     // Ensure nameAr mirrors nameEn if not explicitly set
     if (!data.nameAr) data.nameAr = data.nameEn;
-    const ok = await createProduct(data, user?.id);
+
+    let ok = false;
+    if (id) {
+      ok = await updateProduct(id, data, user?.id);
+    } else {
+      ok = Boolean(await createProduct(data, user?.id));
+    }
+
     if (ok) {
       setSuccessMsg('Product saved successfully!');
       setTimeout(() => navigate('/inventory/products'), 1000);

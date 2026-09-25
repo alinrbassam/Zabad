@@ -15,6 +15,7 @@ import path from 'path';
 import { logger } from './services/logger.service';
 import { DemoDataService } from './services/demo-data.service';
 import { CloudSyncService } from './services/cloud-sync.service';
+import { SupabaseSyncService } from './services/supabase-sync.service';
 
 import { IPC_CHANNELS } from '../shared/ipc/channels';
 
@@ -134,17 +135,23 @@ app.whenReady().then(() => {
     });
   }
 
-  // Background cloud sync for mobile dashboard (runs on startup, every 3 mins, and on quit)
+  // Background cloud sync (Dashboard & Supabase Multi-Device Sync)
   let cloudSyncInstance: CloudSyncService | null = null;
+  let supabaseSyncInstance: SupabaseSyncService | null = null;
   try {
     const db = DatabaseConnection.getInstance().getDatabase();
     cloudSyncInstance = new CloudSyncService(db);
+    supabaseSyncInstance = new SupabaseSyncService(db);
+
     setTimeout(() => {
       cloudSyncInstance?.sync().catch(() => {});
-    }, 3000);
+      supabaseSyncInstance?.syncNow().catch(() => {});
+    }, 5000);
+
     setInterval(() => {
       cloudSyncInstance?.sync().catch(() => {});
-    }, 3 * 60 * 1000);
+      supabaseSyncInstance?.syncNow().catch(() => {});
+    }, 5 * 60 * 1000);
   } catch (err) {
     logger.warn('CloudSync', 'Failed initializing background cloud sync', err);
   }
@@ -158,16 +165,18 @@ app.whenReady().then(() => {
   // Automatically flush final store snapshot to cloud before closing
   let isQuitting = false;
   app.on('before-quit', (e) => {
-    if (!isQuitting && cloudSyncInstance) {
+    if (!isQuitting && (cloudSyncInstance || supabaseSyncInstance)) {
       isQuitting = true;
       e.preventDefault();
       logger.info('App', 'Executing closing sync to cloud before app quit...');
-      cloudSyncInstance
-        .sync()
-        .catch((err) => logger.warn('CloudSync', 'Closing sync failed', err))
-        .finally(() => {
-          app.quit();
-        });
+      Promise.allSettled([
+        cloudSyncInstance ? cloudSyncInstance.sync() : Promise.resolve(),
+        supabaseSyncInstance && supabaseSyncInstance.getConfig().role === 'store'
+          ? supabaseSyncInstance.uploadStoreSnapshot()
+          : Promise.resolve(),
+      ]).finally(() => {
+        app.quit();
+      });
     }
   });
 });

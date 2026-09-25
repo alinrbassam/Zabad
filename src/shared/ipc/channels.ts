@@ -145,6 +145,12 @@ export const IPC_CHANNELS = {
   CLOUD_GET_CONFIG: 'cloud:get_config',
   CLOUD_UPDATE_CONFIG: 'cloud:update_config',
   CLOUD_GET_SNAPSHOT: 'cloud:get_snapshot',
+
+  // Supabase Multi-Device Sync Channels
+  SUPABASE_SYNC_GET_CONFIG: 'supabase_sync:get_config',
+  SUPABASE_SYNC_UPDATE_CONFIG: 'supabase_sync:update_config',
+  SUPABASE_SYNC_NOW: 'supabase_sync:sync_now',
+  SUPABASE_SYNC_GET_REMOTE_META: 'supabase_sync:get_remote_meta',
 } as const;
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

@@ -8,7 +8,7 @@ import { useZoomStore } from '../../stores/useZoomStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
-import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw, ZoomIn, ZoomOut, Cloud } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
@@ -20,7 +20,50 @@ export const TopBar: React.FC = () => {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
   const [isOnline, setIsOnline] = React.useState<boolean>(navigator.onLine);
+  const [isSyncingCloud, setIsSyncingCloud] = React.useState(false);
+  const [syncStatusText, setSyncStatusText] = React.useState<string | null>(null);
+  const [syncRole, setSyncRole] = React.useState<'store' | 'manager'>('store');
   const langRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const checkSyncStatus = async () => {
+      try {
+        const api = (window as any).api;
+        if (api?.getSupabaseSyncConfig) {
+          const res = await api.getSupabaseSyncConfig();
+          if (res?.success && res.data) {
+            setSyncRole(res.data.role || 'store');
+            if (res.data.lastSyncAt) {
+              const d = new Date(res.data.lastSyncAt);
+              setSyncStatusText(d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    checkSyncStatus();
+  }, []);
+
+  const handleTriggerCloudSync = async () => {
+    if (isSyncingCloud) return;
+    setIsSyncingCloud(true);
+    try {
+      const api = (window as any).api;
+      if (api?.syncSupabaseNow) {
+        const res = await api.syncSupabaseNow();
+        if (res?.success) {
+          const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          setSyncStatusText(nowStr);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
 
   React.useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -308,6 +351,38 @@ export const TopBar: React.FC = () => {
             </span>
           </div>
         </div>
+
+        {/* Cloud Sync Status & Trigger Pill */}
+        <button
+          type="button"
+          onClick={handleTriggerCloudSync}
+          disabled={isSyncingCloud}
+          className={`flex items-center space-x-1.5 rtl:space-x-reverse px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+            isSyncingCloud
+              ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-400 border-sky-300 dark:border-sky-800'
+              : syncRole === 'manager'
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400 border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100'
+              : 'bg-slate-50 text-slate-700 dark:bg-slate-900/60 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+          }`}
+          title={
+            syncRole === 'manager'
+              ? language === 'fr'
+                ? `Synchroniser avec le magasin (Dernier: ${syncStatusText || 'Non synchronisé'})`
+                : `Sync from store (Last: ${syncStatusText || 'Not synced'})`
+              : language === 'fr'
+              ? `Envoyer les données au Cloud (Dernier: ${syncStatusText || 'Non synchronisé'})`
+              : `Upload store data to Cloud (Last: ${syncStatusText || 'Not synced'})`
+          }
+        >
+          <Cloud className={`h-3.5 w-3.5 ${isSyncingCloud ? 'animate-spin text-sky-600' : syncRole === 'manager' ? 'text-emerald-600' : 'text-sky-600'}`} />
+          <span className="text-[11px] font-bold">
+            {isSyncingCloud
+              ? language === 'fr' ? 'Sync...' : 'Syncing...'
+              : syncStatusText
+              ? `Cloud (${syncStatusText})`
+              : 'Cloud Sync'}
+          </span>
+        </button>
 
         {/* Ready-to-Install Update Pill */}
         {updateEvent?.status === 'downloaded' && (

@@ -20,8 +20,18 @@ export class ProductService {
     this.auditRepo = new AuditRepository(db);
   }
 
-  public getProductById(id: string): ProductEntity | null {
-    return this.productRepo.findById(id);
+  public getProductById(id: string): (ProductEntity & { quantity_on_hand?: number }) | null {
+    const product = this.productRepo.findById(id);
+    if (!product) return null;
+    try {
+      const balance = this.inventoryRepo.getBalance(id);
+      return {
+        ...product,
+        quantity_on_hand: balance ? balance.quantity_on_hand : 0,
+      };
+    } catch {
+      return product;
+    }
   }
 
   public getProductByBarcode(barcode: string): ProductEntity | null {
@@ -140,6 +150,24 @@ export class ProductService {
     input: Partial<ProductInput> & { id: string },
     userId?: string,
   ): ProductEntity {
+    // Check SKU duplicate (excluding this product's own id)
+    if (input.sku) {
+      const existingSku = this.productRepo.findBySku(input.sku);
+      if (existingSku && existingSku.id !== input.id) {
+        throw new Error(`SKU '${input.sku}' is already in use by product '${existingSku.name_en}'.`);
+      }
+    }
+
+    // Check Barcode duplicate (excluding this product's own id)
+    if (input.primaryBarcode) {
+      const existingBarcode = this.productRepo.findByBarcode(input.primaryBarcode);
+      if (existingBarcode && existingBarcode.id !== input.id) {
+        throw new Error(
+          `Barcode '${input.primaryBarcode}' is already assigned to '${existingBarcode.name_en}'.`,
+        );
+      }
+    }
+
     const updated = this.productRepo.updateProduct({
       id: input.id,
       sku: input.sku,
@@ -191,6 +219,23 @@ export class ProductService {
       is_featured: input.isFeatured !== undefined ? (input.isFeatured ? 1 : 0) : undefined,
       updated_by: userId,
     });
+
+    // Handle stock quantity adjustment if openingStockQty is provided
+    if (input.openingStockQty !== undefined && input.openingStockQty !== null) {
+      const currentBal = this.inventoryRepo.getBalance(input.id);
+      const diff = Number(input.openingStockQty) - Number(currentBal.quantity_on_hand || 0);
+      if (diff !== 0) {
+        this.inventoryRepo.recordStockMovement({
+          productId: input.id,
+          movementType: diff > 0 ? 'Manual addition' : 'Manual deduction',
+          quantityChange: diff,
+          unitId: input.baseUnitId || updated.base_unit_id,
+          costAtTime: input.purchaseCost ?? updated.purchase_cost,
+          reason: 'Manual stock update from product form',
+          userId,
+        });
+      }
+    }
 
     this.auditRepo.logAction({
       user_id: userId,

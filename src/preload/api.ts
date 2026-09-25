@@ -147,6 +147,12 @@ const IPC_CHANNELS = {
   CLOUD_GET_CONFIG: 'cloud:get_config',
   CLOUD_UPDATE_CONFIG: 'cloud:update_config',
   CLOUD_GET_SNAPSHOT: 'cloud:get_snapshot',
+
+  // Supabase Multi-Device Sync Channels
+  SUPABASE_SYNC_GET_CONFIG: 'supabase_sync:get_config',
+  SUPABASE_SYNC_UPDATE_CONFIG: 'supabase_sync:update_config',
+  SUPABASE_SYNC_NOW: 'supabase_sync:sync_now',
+  SUPABASE_SYNC_GET_REMOTE_META: 'supabase_sync:get_remote_meta',
 } as const;
 import {
   ApiResponse,
@@ -574,6 +580,33 @@ export const api = {
     ipcRenderer.invoke(IPC_CHANNELS.CLOUD_SYNC_NOW),
   getCloudSnapshot: (): Promise<ApiResponse<any>> =>
     ipcRenderer.invoke(IPC_CHANNELS.CLOUD_GET_SNAPSHOT),
+
+  // Supabase Multi-Device Cloud Sync
+  getSupabaseSyncConfig: (): Promise<
+    ApiResponse<{
+      enabled: boolean;
+      role: 'store' | 'manager';
+      supabaseUrl: string;
+      supabaseKey: string;
+      autoSyncIntervalMinutes: number;
+      lastSyncAt: string | null;
+      lastStatus: string | null;
+      remoteMeta?: any;
+    }>
+  > => ipcRenderer.invoke(IPC_CHANNELS.SUPABASE_SYNC_GET_CONFIG),
+  updateSupabaseSyncConfig: (config: {
+    enabled?: boolean;
+    role?: 'store' | 'manager';
+    supabaseUrl?: string;
+    supabaseKey?: string;
+    autoSyncIntervalMinutes?: number;
+  }): Promise<ApiResponse<any>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SUPABASE_SYNC_UPDATE_CONFIG, config),
+  syncSupabaseNow: (): Promise<
+    ApiResponse<{ success: boolean; message: string; timestamp?: string; remoteMeta?: any }>
+  > => ipcRenderer.invoke(IPC_CHANNELS.SUPABASE_SYNC_NOW),
+  getSupabaseRemoteMeta: (): Promise<ApiResponse<any>> =>
+    ipcRenderer.invoke(IPC_CHANNELS.SUPABASE_SYNC_GET_REMOTE_META),
 
   // Zoom controls
   setZoomFactor: (factor: number): void => {
