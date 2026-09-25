@@ -151,6 +151,7 @@ export const IPC_CHANNELS = {
   SUPABASE_SYNC_UPDATE_CONFIG: 'supabase_sync:update_config',
   SUPABASE_SYNC_NOW: 'supabase_sync:sync_now',
   SUPABASE_SYNC_GET_REMOTE_META: 'supabase_sync:get_remote_meta',
+  SUPABASE_SYNC_EVENT: 'supabase_sync:event',
 } as const;
 
 export type IPCChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

@@ -153,6 +153,7 @@ const IPC_CHANNELS = {
   SUPABASE_SYNC_UPDATE_CONFIG: 'supabase_sync:update_config',
   SUPABASE_SYNC_NOW: 'supabase_sync:sync_now',
   SUPABASE_SYNC_GET_REMOTE_META: 'supabase_sync:get_remote_meta',
+  SUPABASE_SYNC_EVENT: 'supabase_sync:event',
 } as const;
 import {
   ApiResponse,
@@ -607,6 +608,13 @@ export const api = {
   > => ipcRenderer.invoke(IPC_CHANNELS.SUPABASE_SYNC_NOW),
   getSupabaseRemoteMeta: (): Promise<ApiResponse<any>> =>
     ipcRenderer.invoke(IPC_CHANNELS.SUPABASE_SYNC_GET_REMOTE_META),
+  onSupabaseSyncEvent: (
+    callback: (payload: { success: boolean; totalMerged?: number; timestamp?: string }) => void,
+  ): (() => void) => {
+    const handler = (_: any, data: any) => callback(data);
+    ipcRenderer.on(IPC_CHANNELS.SUPABASE_SYNC_EVENT, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.SUPABASE_SYNC_EVENT, handler);
+  },
 
   // Zoom controls
   setZoomFactor: (factor: number): void => {

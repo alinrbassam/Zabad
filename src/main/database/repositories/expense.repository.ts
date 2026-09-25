@@ -48,7 +48,7 @@ export class ExpenseRepository {
     category?: string;
     limit?: number;
   }): ExpenseEntity[] {
-    let sql = `SELECT * FROM expenses WHERE 1=1`;
+    let sql = `SELECT * FROM expenses WHERE (deleted_at IS NULL OR deleted_at = '')`;
     const params: (string | number)[] = [];
 
     if (options?.startDate) {
@@ -71,7 +71,7 @@ export class ExpenseRepository {
   }
 
   public delete(id: string): boolean {
-    const stmt = this.db.prepare(`DELETE FROM expenses WHERE id = ?`);
+    const stmt = this.db.prepare(`UPDATE expenses SET deleted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`);
     const res = stmt.run(id);
     return res.changes > 0;
   }
@@ -80,7 +80,7 @@ export class ExpenseRepository {
     let sql = `
       SELECT category, SUM(amount) as total, COUNT(id) as count
       FROM expenses
-      WHERE 1=1
+      WHERE (deleted_at IS NULL OR deleted_at = '')
     `;
     const params: string[] = [];
 
@@ -98,7 +98,7 @@ export class ExpenseRepository {
   }
 
   public getTotalExpenses(startDate?: string, endDate?: string): number {
-    let sql = `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE 1=1`;
+    let sql = `SELECT COALESCE(SUM(amount), 0) as total FROM expenses WHERE (deleted_at IS NULL OR deleted_at = '')`;
     const params: string[] = [];
 
     if (startDate) {

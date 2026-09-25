@@ -22,6 +22,7 @@ import {
   CategoryInput,
 } from '../../shared/validation';
 import { logger } from '../services/logger.service';
+import { SupabaseSyncService } from '../services/supabase-sync.service';
 
 export function registerInventoryIpcHandlers(db: Database.Database): void {
   const productService = new ProductService(db);
@@ -67,6 +68,7 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
       try {
         const parsed = ProductSchema.parse(payload);
         const res = productService.createProduct(parsed, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         logger.error('InventoryIPC', 'Product creation failed', err);
@@ -89,6 +91,7 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
           parsed as Partial<ProductInput> & { id: string },
           userId,
         );
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         return {
@@ -104,6 +107,7 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
     async (_, id: string, userId?: string): Promise<ApiResponse> => {
       try {
         productService.archiveProduct(id, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true };
       } catch (err) {
         return {
@@ -119,6 +123,7 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
     async (_, id: string, userId?: string): Promise<ApiResponse> => {
       try {
         productService.deleteProduct(id, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true };
       } catch (err) {
         return {
@@ -264,6 +269,7 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
       try {
         const parsed = SupplierSchema.parse(payload);
         const res = supplierService.createSupplier(parsed);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         return {
@@ -308,6 +314,7 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
       try {
         const parsed = StockAdjustmentSchema.parse(payload);
         const res = inventoryService.createAdjustment(parsed, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         return {

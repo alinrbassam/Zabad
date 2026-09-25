@@ -1,12 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
-import { app } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { logger } from './logger.service';
 import { DatabaseConnection } from '../database/connection';
 import { LicensingService } from './licensing.service';
 import { SettingsRepository } from '../database/repositories/settings.repository';
 import { BusinessRepository } from '../database/repositories/business.repository';
+import { IPC_CHANNELS } from '../../shared/ipc/channels';
 
 export const DEFAULT_SUPABASE_URL = 'https://zlewivlmnwjloksdercw.supabase.co';
 export const DEFAULT_SUPABASE_KEY =
@@ -37,6 +38,10 @@ export interface SupabaseSyncConfig {
 }
 
 export class SupabaseSyncService {
+  private static instance: SupabaseSyncService | null = null;
+  private static syncTimeout: NodeJS.Timeout | null = null;
+  private isSyncing = false;
+
   private db: Database.Database;
   private licensingService: LicensingService;
   private settingsRepo: SettingsRepository;
@@ -47,6 +52,32 @@ export class SupabaseSyncService {
     this.licensingService = new LicensingService(db);
     this.settingsRepo = new SettingsRepository(db);
     this.businessRepo = new BusinessRepository(db);
+    SupabaseSyncService.instance = this;
+  }
+
+  public static getInstance(db?: Database.Database): SupabaseSyncService {
+    if (!SupabaseSyncService.instance) {
+      const activeDb = db || DatabaseConnection.getInstance().getDatabase();
+      SupabaseSyncService.instance = new SupabaseSyncService(activeDb);
+    }
+    return SupabaseSyncService.instance;
+  }
+
+  public static triggerDebouncedSync(delayMs = 1500): void {
+    if (SupabaseSyncService.instance) {
+      SupabaseSyncService.instance.triggerDebouncedSync(delayMs);
+    }
+  }
+
+  public triggerDebouncedSync(delayMs = 1500): void {
+    if (SupabaseSyncService.syncTimeout) {
+      clearTimeout(SupabaseSyncService.syncTimeout);
+    }
+    SupabaseSyncService.syncTimeout = setTimeout(() => {
+      this.syncNow().catch((err) => {
+        logger.warn('SupabaseSync', 'Debounced sync failed', err);
+      });
+    }, delayMs);
   }
 
   public getConfig(): SupabaseSyncConfig {
@@ -406,37 +437,49 @@ export class SupabaseSyncService {
         const rows = remoteTables[table];
         if (!Array.isArray(rows) || rows.length === 0) continue;
 
-        let colInfo: Array<{ name: string }> = [];
+        let colInfo: Array<{ name: string; pk: number }> = [];
         try {
-          colInfo = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+          colInfo = this.db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string; pk: number }>;
         } catch {
           continue;
         }
         if (!colInfo || colInfo.length === 0) continue;
 
         const colNames = colInfo.map((c) => c.name);
+        const pkCols = colInfo.filter((c) => c.pk > 0).map((c) => c.name);
+        const effectivePkCols = pkCols.length > 0 ? pkCols : (colNames.includes('id') ? ['id'] : []);
+        if (effectivePkCols.length === 0) continue;
+
         const placeholders = colNames.map(() => '?').join(', ');
         const insertStmt = this.db.prepare(
           `INSERT OR REPLACE INTO ${table} (${colNames.join(', ')}) VALUES (${placeholders})`
         );
 
+        const whereClause = effectivePkCols.map((c) => `${c} = ?`).join(' AND ');
         let checkStmt: Database.Statement | null = null;
         try {
-          checkStmt = this.db.prepare(`SELECT * FROM ${table} WHERE id = ?`);
+          checkStmt = this.db.prepare(`SELECT * FROM ${table} WHERE ${whereClause}`);
         } catch {}
 
         for (const row of rows) {
-          if (!row || typeof row !== 'object' || !row.id) continue;
+          if (!row || typeof row !== 'object') continue;
+          const pkValues = effectivePkCols.map((c) => row[c]);
+          if (pkValues.some((v) => v === undefined || v === null)) continue;
 
           let shouldWrite = true;
           if (checkStmt) {
             try {
-              const existing = checkStmt.get(row.id) as Record<string, any> | undefined;
+              const existing = checkStmt.get(...pkValues) as Record<string, any> | undefined;
               if (existing) {
                 const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
                 const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
-                if (existingTime >= incomingTime) {
-                  shouldWrite = false;
+                if (existingTime > 0 && incomingTime > 0 && existingTime >= incomingTime) {
+                  // If incoming has deleted_at set and local doesn't, remote takes precedence
+                  if (row.deleted_at && !existing.deleted_at) {
+                    shouldWrite = true;
+                  } else {
+                    shouldWrite = false;
+                  }
                 }
               }
             } catch {
@@ -483,11 +526,18 @@ export class SupabaseSyncService {
     message: string;
     timestamp?: string;
     remoteMeta?: RemoteSyncMeta | null;
+    totalMerged?: number;
   }> {
     const config = this.getConfig();
     if (!config.enabled) {
       return { success: false, message: 'Cloud sync is currently disabled in Settings.' };
     }
+
+    if (this.isSyncing) {
+      logger.info('SupabaseSync', 'Sync already in progress, skipping concurrent call.');
+      return { success: true, message: 'Synchronisation déjà en cours...' };
+    }
+    this.isSyncing = true;
 
     const userDataPath = app ? app.getPath('userData') : process.cwd();
     const tempDir = path.join(userDataPath, 'temp_sync');
@@ -544,6 +594,22 @@ export class SupabaseSyncService {
         remoteMeta: meta,
       });
 
+      // 4. Broadcast sync event to all renderer windows so UI refreshes live
+      try {
+        const windows = BrowserWindow.getAllWindows();
+        for (const win of windows) {
+          if (!win.isDestroyed()) {
+            win.webContents.send(IPC_CHANNELS.SUPABASE_SYNC_EVENT, {
+              success: true,
+              totalMerged,
+              timestamp: now,
+            });
+          }
+        }
+      } catch (broadcastErr) {
+        logger.warn('SupabaseSync', 'Failed to broadcast sync event to windows', broadcastErr);
+      }
+
       const message =
         totalMerged > 0
           ? `Synchronisation réussie (${totalMerged} éléments synchronisés avec le Cloud) ✓`
@@ -554,6 +620,7 @@ export class SupabaseSyncService {
         message,
         timestamp: now,
         remoteMeta: meta,
+        totalMerged,
       };
     } catch (err: any) {
       const msg = err.message || 'Unknown network error';
@@ -561,6 +628,7 @@ export class SupabaseSyncService {
       this.updateConfig({ lastStatus: `Erreur: ${msg}` });
       return { success: false, message: msg };
     } finally {
+      this.isSyncing = false;
       try {
         if (fs.existsSync(cloudDbPath)) {
           fs.unlinkSync(cloudDbPath);

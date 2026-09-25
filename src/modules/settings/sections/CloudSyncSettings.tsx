@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useLanguageStore } from '../../../renderer/stores/useLanguageStore';
 import { useProductStore } from '../../../renderer/stores/useProductStore';
+import { useExpenseStore } from '../../../renderer/stores/useExpenseStore';
 
 const DEFAULT_SUPABASE_URL = 'https://zlewivlmnwjloksdercw.supabase.co';
 const DEFAULT_SUPABASE_KEY =
@@ -40,6 +41,19 @@ export const CloudSyncSettings: React.FC = () => {
 
   useEffect(() => {
     loadSupabaseConfig();
+
+    const api = (window as any).api;
+    if (api?.onSupabaseSyncEvent) {
+      const unsub = api.onSupabaseSyncEvent(() => {
+        loadSupabaseConfig();
+      });
+      return () => {
+        try {
+          unsub();
+        } catch {}
+      };
+    }
+    return undefined;
   }, []);
 
   const loadSupabaseConfig = async () => {
@@ -110,6 +124,7 @@ export const CloudSyncSettings: React.FC = () => {
         try {
           useProductStore.getState().loadProducts();
           useProductStore.getState().loadMetadata();
+          useExpenseStore.getState().loadExpenses();
         } catch {}
       } else {
         const errMsg = res?.data?.message || res?.error?.message || 'Erreur réseau';

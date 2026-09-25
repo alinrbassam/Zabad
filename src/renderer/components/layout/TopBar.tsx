@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useCommercialStore } from '../../stores/useCommercialStore';
 import { useZoomStore } from '../../stores/useZoomStore';
 import { useProductStore } from '../../stores/useProductStore';
+import { useExpenseStore } from '../../stores/useExpenseStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
@@ -45,6 +46,29 @@ export const TopBar: React.FC = () => {
       }
     };
     checkSyncStatus();
+
+    // Live continuous sync event listener from background worker
+    const api = (window as any).api;
+    if (api?.onSupabaseSyncEvent) {
+      const unsub = api.onSupabaseSyncEvent((payload: any) => {
+        if (payload?.success) {
+          const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          setSyncStatusText(nowStr);
+          try {
+            useProductStore.getState().loadProducts();
+            useProductStore.getState().loadMetadata();
+            useExpenseStore.getState().loadExpenses();
+          } catch {}
+          window.dispatchEvent(new CustomEvent('supabase-data-synced', { detail: payload }));
+        }
+      });
+      return () => {
+        try {
+          unsub();
+        } catch {}
+      };
+    }
+    return undefined;
   }, []);
 
   const handleTriggerCloudSync = async () => {
@@ -60,6 +84,7 @@ export const TopBar: React.FC = () => {
           try {
             useProductStore.getState().loadProducts();
             useProductStore.getState().loadMetadata();
+            useExpenseStore.getState().loadExpenses();
           } catch {}
         }
       }

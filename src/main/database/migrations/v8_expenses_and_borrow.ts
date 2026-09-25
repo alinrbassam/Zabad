@@ -39,7 +39,16 @@ export function ensureBorrowColumns(db: Database.Database): void {
     if (!colNames.has('notes')) {
       db.exec(`ALTER TABLE sales_orders ADD COLUMN notes TEXT NULL`);
     }
+
+    const expCols = db.prepare(`PRAGMA table_info(expenses)`).all() as Array<{ name: string }>;
+    const expColNames = new Set(expCols.map((c) => c.name));
+    if (!expColNames.has('deleted_at')) {
+      db.exec(`ALTER TABLE expenses ADD COLUMN deleted_at DATETIME NULL`);
+    }
+    if (!expColNames.has('updated_at')) {
+      db.exec(`ALTER TABLE expenses ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+    }
   } catch (err) {
-    // If sales_orders table doesn't exist yet, migration v5 creates it
+    // If sales_orders or expenses table doesn't exist yet, migration creates it
   }
 }

@@ -6,6 +6,7 @@ import { PurchaseOrderService } from '../services/purchase-order.service';
 import { GoodsReceiptService } from '../services/goods-receipt.service';
 import { PurchaseReturnService } from '../services/purchase-return.service';
 import { PurchasingDashboardService } from '../services/purchasing-dashboard.service';
+import { SupabaseSyncService } from '../services/supabase-sync.service';
 import { PurchaseOrderSchema, GoodsReceivingSchema, PurchaseReturnSchema } from '../../shared/validation';
 import { logger } from '../services/logger.service';
 
@@ -51,6 +52,7 @@ export function registerPurchasingIpcHandlers(db: Database.Database): void {
       try {
         const parsed = PurchaseOrderSchema.parse(payload);
         const res = poService.createPurchaseOrder(parsed, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         logger.error('PurchasingIPC', 'Failed creating PO', err);
@@ -67,6 +69,7 @@ export function registerPurchasingIpcHandlers(db: Database.Database): void {
     async (_, payload: { id: string; toStatus: POStatus; notes?: string }): Promise<ApiResponse> => {
       try {
         poService.updateStatus(payload.id, payload.toStatus, undefined, payload.notes);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true };
       } catch (err) {
         return {
@@ -83,6 +86,7 @@ export function registerPurchasingIpcHandlers(db: Database.Database): void {
       try {
         const parsed = GoodsReceivingSchema.parse(payload);
         const res = grService.confirmReceipt(parsed, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         return {
@@ -99,6 +103,7 @@ export function registerPurchasingIpcHandlers(db: Database.Database): void {
       try {
         const parsed = PurchaseReturnSchema.parse(payload);
         const res = prService.createReturn(parsed, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         return {

@@ -141,17 +141,19 @@ app.whenReady().then(() => {
   try {
     const db = DatabaseConnection.getInstance().getDatabase();
     cloudSyncInstance = new CloudSyncService(db);
-    supabaseSyncInstance = new SupabaseSyncService(db);
+    supabaseSyncInstance = SupabaseSyncService.getInstance(db);
 
+    // Initial pull & sync from cloud on startup
     setTimeout(() => {
       cloudSyncInstance?.sync().catch(() => {});
       supabaseSyncInstance?.syncNow().catch(() => {});
-    }, 5000);
+    }, 1500);
 
+    // Continuous 30-second background sync between laptops
     setInterval(() => {
       cloudSyncInstance?.sync().catch(() => {});
       supabaseSyncInstance?.syncNow().catch(() => {});
-    }, 5 * 60 * 1000);
+    }, 30 * 1000);
   } catch (err) {
     logger.warn('CloudSync', 'Failed initializing background cloud sync', err);
   }
@@ -162,7 +164,7 @@ app.whenReady().then(() => {
     }
   });
 
-  // Automatically flush final store snapshot to cloud before closing
+  // Automatically flush final state to cloud before closing
   let isQuitting = false;
   app.on('before-quit', (e) => {
     if (!isQuitting && (cloudSyncInstance || supabaseSyncInstance)) {
@@ -171,9 +173,7 @@ app.whenReady().then(() => {
       logger.info('App', 'Executing closing sync to cloud before app quit...');
       Promise.allSettled([
         cloudSyncInstance ? cloudSyncInstance.sync() : Promise.resolve(),
-        supabaseSyncInstance && supabaseSyncInstance.getConfig().role === 'store'
-          ? supabaseSyncInstance.uploadStoreSnapshot()
-          : Promise.resolve(),
+        supabaseSyncInstance ? supabaseSyncInstance.syncNow() : Promise.resolve(),
       ]).finally(() => {
         app.quit();
       });

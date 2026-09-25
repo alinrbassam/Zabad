@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from '../../shared/ipc/channels';
 import { ApiResponse } from '../../shared/types';
 import { ExpenseService } from '../services/expense.service';
 import { CloudSyncService } from '../services/cloud-sync.service';
+import { SupabaseSyncService } from '../services/supabase-sync.service';
 import { ExpenseSchema } from '../../shared/validation';
 import { logger } from '../services/logger.service';
 
@@ -37,6 +38,7 @@ export function registerExpenseIpcHandlers(db: Database.Database): void {
         const parsed = ExpenseSchema.parse(payload);
         const res = expenseService.createExpense(parsed, userId);
         cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after expense creation failed', err));
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         logger.error('ExpenseIPC', 'Failed to create expense', err);
@@ -54,6 +56,7 @@ export function registerExpenseIpcHandlers(db: Database.Database): void {
       try {
         const res = expenseService.deleteExpense(id, userId);
         cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after expense deletion failed', err));
+        SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {
         logger.error('ExpenseIPC', 'Failed to delete expense', err);
