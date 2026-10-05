@@ -12,6 +12,7 @@ export class UnitRepository {
   private initDefaultUnits(): void {
     const defaults = [
       {
+        id: 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035',
         code: 'pcs',
         name_en: 'Piece',
         name_ar: ' قطعة',
@@ -21,6 +22,7 @@ export class UnitRepository {
         prec: 0,
       },
       {
+        id: '43fb4b80-087d-45b4-9c2f-27201d15d637',
         code: 'kg',
         name_en: 'Kilogram',
         name_ar: 'كيلوجرام',
@@ -29,9 +31,28 @@ export class UnitRepository {
         dec: 1,
         prec: 3,
       },
-      { code: 'g', name_en: 'Gram', name_ar: 'جرام', symbol: 'g', cat: 'Weight', dec: 1, prec: 2 },
-      { code: 'l', name_en: 'Liter', name_ar: 'لتر', symbol: 'L', cat: 'Volume', dec: 1, prec: 3 },
       {
+        id: '0a97133a-9d66-48d4-a37c-3577e2b7e4df',
+        code: 'g',
+        name_en: 'Gram',
+        name_ar: 'جرام',
+        symbol: 'g',
+        cat: 'Weight',
+        dec: 1,
+        prec: 2,
+      },
+      {
+        id: '544b75f5-6fc0-4ace-a43e-07deedda8b2c',
+        code: 'l',
+        name_en: 'Liter',
+        name_ar: 'لتر',
+        symbol: 'L',
+        cat: 'Volume',
+        dec: 1,
+        prec: 3,
+      },
+      {
+        id: '67ad86da-5f31-4255-a466-67c772d7e0a3',
         code: 'ml',
         name_en: 'Milliliter',
         name_ar: 'مليلتر',
@@ -40,8 +61,18 @@ export class UnitRepository {
         dec: 0,
         prec: 0,
       },
-      { code: 'm', name_en: 'Meter', name_ar: 'متر', symbol: 'm', cat: 'Length', dec: 1, prec: 2 },
       {
+        id: 'fb6ad0f2-d609-4b9d-936b-d7c9b3e78355',
+        code: 'm',
+        name_en: 'Meter',
+        name_ar: 'متر',
+        symbol: 'm',
+        cat: 'Length',
+        dec: 1,
+        prec: 2,
+      },
+      {
+        id: 'a624a0e8-3b09-49c9-a6ba-669337912adf',
         code: 'box',
         name_en: 'Box',
         name_ar: 'صندوق',
@@ -51,6 +82,7 @@ export class UnitRepository {
         prec: 0,
       },
       {
+        id: '3d632883-8a79-4c4a-acd8-c3b3751f030b',
         code: 'carton',
         name_en: 'Carton',
         name_ar: 'كرتونة',
@@ -60,6 +92,7 @@ export class UnitRepository {
         prec: 0,
       },
       {
+        id: '79a4a165-841c-4652-b2f3-e5cb41694880',
         code: 'pack',
         name_en: 'Pack',
         name_ar: 'عبوة',
@@ -76,7 +109,7 @@ export class UnitRepository {
     `);
 
     for (const u of defaults) {
-      stmt.run(crypto.randomUUID(), u.code, u.name_en, u.name_ar, u.symbol, u.cat, u.dec, u.prec);
+      stmt.run(u.id, u.code, u.name_en, u.name_ar, u.symbol, u.cat, u.dec, u.prec);
     }
   }
 

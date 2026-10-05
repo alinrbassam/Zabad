@@ -97,9 +97,9 @@ export class DemoDataService {
     // 1. Get or create base units
     let kgUnit = this.db.prepare("SELECT id FROM units WHERE LOWER(code) = 'kg' OR LOWER(name_en) = 'kilogram' LIMIT 1").get() as { id: string } | undefined;
     if (!kgUnit) {
-      const kgId = 'unit-kg-std';
+      const kgId = '43fb4b80-087d-45b4-9c2f-27201d15d637';
       this.db.prepare(`
-        INSERT OR IGNORE INTO units (id, code, name_en, name_ar, symbol, unit_type, allow_decimals, decimal_places, is_active)
+        INSERT OR IGNORE INTO units (id, code, name_en, name_ar, symbol, unit_category, allow_decimals, decimal_precision, is_active)
         VALUES (?, 'kg', 'Kilogram', 'كيلوجرام', 'kg', 'Weight', 1, 3, 1)
       `).run(kgId);
       kgUnit = { id: kgId };
@@ -107,9 +107,9 @@ export class DemoDataService {
 
     let pcsUnit = this.db.prepare("SELECT id FROM units WHERE LOWER(code) = 'pcs' OR LOWER(name_en) = 'piece' LIMIT 1").get() as { id: string } | undefined;
     if (!pcsUnit) {
-      const pcsId = 'unit-pcs-std';
+      const pcsId = 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035';
       this.db.prepare(`
-        INSERT OR IGNORE INTO units (id, code, name_en, name_ar, symbol, unit_type, allow_decimals, decimal_places, is_active)
+        INSERT OR IGNORE INTO units (id, code, name_en, name_ar, symbol, unit_category, allow_decimals, decimal_precision, is_active)
         VALUES (?, 'pcs', 'Piece', 'قطعة', 'pcs', 'Count', 0, 0, 1)
       `).run(pcsId);
       pcsUnit = { id: pcsId };

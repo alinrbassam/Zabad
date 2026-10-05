@@ -128,7 +128,11 @@ export class SupabaseSyncService {
       updates.supabase_remote_meta = patch.remoteMeta ? JSON.stringify(patch.remoteMeta) : '';
     }
 
-    this.settingsRepo.setCategorySettings(bizId, 'supabase_sync', updates);
+    try {
+      this.settingsRepo.setCategorySettings(bizId, 'supabase_sync', updates);
+    } catch {
+      // Ignore if business row is not yet initialized on a fresh install
+    }
   }
 
   /**
@@ -411,6 +415,7 @@ export class SupabaseSyncService {
     'batches',
     'inventory_movements',
     'inventory_balances',
+    'numbering_sequences',
   ];
 
   public exportLocalData(): Record<string, any[]> {
@@ -435,6 +440,21 @@ export class SupabaseSyncService {
     } catch (e) {
       logger.warn('SupabaseSync', 'Failed to disable foreign keys', e);
     }
+
+    const catalogUniqueCols: Record<string, string[]> = {
+      units: ['code'],
+      suppliers: ['code'],
+      products: ['sku', 'primary_barcode'],
+      product_barcodes: ['barcode'],
+    };
+
+    const documentUniqueCol: Record<string, string> = {
+      sales_orders: 'invoice_number',
+      purchase_orders: 'po_number',
+      goods_receipts: 'receipt_number',
+      purchase_returns: 'return_number',
+      sales_refunds: 'refund_number',
+    };
 
     const executeTx = this.db.transaction(() => {
       for (const table of SupabaseSyncService.SYNCED_TABLES) {
@@ -469,39 +489,99 @@ export class SupabaseSyncService {
           updateStmt = this.db.prepare(`UPDATE ${table} SET ${setClause} WHERE ${whereClause}`);
         }
 
-        for (const row of rows) {
-          if (!row || typeof row !== 'object') continue;
+        for (const rawRow of rows) {
+          if (!rawRow || typeof rawRow !== 'object') continue;
+          const row = { ...rawRow };
           const pkValues = effectivePkCols.map((c) => row[c]);
           if (pkValues.some((v) => v === undefined || v === null)) continue;
 
-          let existing: Record<string, any> | undefined;
           try {
-            existing = checkStmt.get(...pkValues) as Record<string, any> | undefined;
-          } catch {
-            existing = undefined;
-          }
-
-          if (existing) {
-            let shouldWrite = true;
-            const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
-            const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
-            if (existingTime > 0 && incomingTime > 0 && existingTime >= incomingTime) {
-              if (row.deleted_at && !existing.deleted_at) {
-                shouldWrite = true;
-              } else {
-                shouldWrite = false;
-              }
+            let existing: Record<string, any> | undefined;
+            try {
+              existing = checkStmt.get(...pkValues) as Record<string, any> | undefined;
+            } catch {
+              existing = undefined;
             }
 
-            if (shouldWrite && updateStmt) {
-              const nonPkValues = nonPkCols.map((col) => (row[col] !== undefined ? row[col] : null));
-              updateStmt.run(...nonPkValues, ...pkValues);
+            if (existing) {
+              let shouldWrite = true;
+              if (table === 'numbering_sequences') {
+                const localNum = Number(existing.current_number || 0);
+                const remoteNum = Number(row.current_number || 0);
+                if (remoteNum > localNum) {
+                  row.current_number = remoteNum;
+                  shouldWrite = true;
+                } else {
+                  shouldWrite = false;
+                }
+              } else {
+                const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
+                const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
+                if (existingTime > 0 && incomingTime > 0 && existingTime >= incomingTime) {
+                  if (row.deleted_at && !existing.deleted_at) {
+                    shouldWrite = true;
+                  } else {
+                    shouldWrite = false;
+                  }
+                } else if (existingTime === 0 && incomingTime === 0) {
+                  const hasDiff = nonPkCols.some(
+                    (col) => existing![col] !== (row[col] !== undefined ? row[col] : null),
+                  );
+                  if (!hasDiff) {
+                    shouldWrite = false;
+                  }
+                }
+              }
+
+              if (shouldWrite && updateStmt) {
+                const nonPkValues = nonPkCols.map((col) => (row[col] !== undefined ? row[col] : null));
+                updateStmt.run(...nonPkValues, ...pkValues);
+                rowsMerged++;
+              }
+            } else {
+              // Handle catalog unique column conflicts (e.g. units.code, products.sku)
+              const uniqueCols = catalogUniqueCols[table];
+              if (uniqueCols) {
+                for (const uCol of uniqueCols) {
+                  const uVal = row[uCol];
+                  if (uVal !== undefined && uVal !== null && uVal !== '' && colNames.includes(uCol)) {
+                    try {
+                      this.db
+                        .prepare(`DELETE FROM ${table} WHERE LOWER(${uCol}) = LOWER(?)`)
+                        .run(String(uVal));
+                    } catch {
+                      // ignore
+                    }
+                  }
+                }
+              }
+
+              // Handle document number collisions (e.g. sales_orders.invoice_number) so both sales are kept
+              const docCol = documentUniqueCol[table];
+              if (docCol && row[docCol] && colNames.includes(docCol)) {
+                let candidate = String(row[docCol]);
+                let suffix = 2;
+                while (suffix < 100) {
+                  try {
+                    const dup = this.db
+                      .prepare(`SELECT 1 as found FROM ${table} WHERE ${docCol} = ? LIMIT 1`)
+                      .get(candidate) as { found?: number } | undefined;
+                    if (!dup) break;
+                    candidate = `${row[docCol]}-${suffix}`;
+                    suffix++;
+                  } catch {
+                    break;
+                  }
+                }
+                row[docCol] = candidate;
+              }
+
+              const allValues = colNames.map((col) => (row[col] !== undefined ? row[col] : null));
+              insertStmt.run(...allValues);
               rowsMerged++;
             }
-          } else {
-            const allValues = colNames.map((col) => (row[col] !== undefined ? row[col] : null));
-            insertStmt.run(...allValues);
-            rowsMerged++;
+          } catch (rowErr) {
+            logger.warn('SupabaseSync', `Row merge skipped in table ${table}`, rowErr);
           }
         }
       }

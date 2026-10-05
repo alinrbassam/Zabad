@@ -26,100 +26,6 @@ import {
   Package,
 } from 'lucide-react';
 
-// Default Fish Products for instant store catalog (Prices in FCFA)
-const DEFAULT_FISH_PRODUCTS: Partial<ProductEntity>[] = [
-  {
-    id: 'fish-salmon',
-    sku: 'FISH-001',
-    name_en: 'Fresh Salmon (سالمون طازج)',
-    name_ar: 'سالمون طازج',
-    selling_price: 6500,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'fresh',
-  },
-  {
-    id: 'fish-seabream',
-    sku: 'FISH-002',
-    name_en: 'Sea Bream (دنيس طازج)',
-    name_ar: 'سمك دنيس طازج',
-    selling_price: 4500,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'fresh',
-  },
-  {
-    id: 'fish-seabass',
-    sku: 'FISH-003',
-    name_en: 'Sea Bass (قاروص طازج)',
-    name_ar: 'سمك قاروص طازج',
-    selling_price: 5000,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'fresh',
-  },
-  {
-    id: 'fish-shrimp-jumbo',
-    sku: 'FISH-004',
-    name_en: 'Jumbo Shrimp (روبيان جامبو)',
-    name_ar: 'روبيان جامبو طازج',
-    selling_price: 8500,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'shrimp',
-  },
-  {
-    id: 'fish-calamari',
-    sku: 'FISH-005',
-    name_en: 'Fresh Calamari (حبار طازج)',
-    name_ar: 'حبار طازج',
-    selling_price: 4000,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'shrimp',
-  },
-  {
-    id: 'fish-hamour',
-    sku: 'FISH-006',
-    name_en: 'Fresh Hamour (هامور بلدي)',
-    name_ar: 'هامور بلدي',
-    selling_price: 6000,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'fresh',
-  },
-  {
-    id: 'fish-fillet',
-    sku: 'FISH-007',
-    name_en: 'White Fish Fillet (فيليه أبيض)',
-    name_ar: 'فيليه سمك أبيض',
-    selling_price: 4500,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'fillet',
-  },
-  {
-    id: 'fish-tuna-steak',
-    sku: 'FISH-008',
-    name_en: 'Tuna Steak (قطع تونة طازجة)',
-    name_ar: 'قطع تونة طازجة',
-    selling_price: 5500,
-    allow_decimal_qty: 1,
-    base_unit_id: 'Kg',
-    category_id: 'fillet',
-  },
-  {
-    id: 'fish-spices',
-    sku: 'EXTRA-001',
-    name_en: 'Fish Seasoning & Spices (بهارات سمك خاصة)',
-    name_ar: 'بهارات وتتبيلة سمك',
-    selling_price: 1000,
-    allow_decimal_qty: 0,
-    base_unit_id: 'Piece',
-    category_id: 'extras',
-  },
-];
-
 export const POSTerminalPage: React.FC = () => {
   const {
     cart,
@@ -159,7 +65,11 @@ export const POSTerminalPage: React.FC = () => {
       loadMetadata();
     };
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    window.addEventListener('supabase-data-synced', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('supabase-data-synced', handleFocus);
+    };
   }, [loadProducts, loadMetadata]);
 
   useEffect(() => {
@@ -237,10 +147,8 @@ export const POSTerminalPage: React.FC = () => {
 
   const selectedCatObj = categories.find((c) => c.id === selectedCategory);
 
-  // Combine DB products with default Fish products if DB is empty
-  const displayProducts: ProductEntity[] = (
-    products.length > 0 ? products : (DEFAULT_FISH_PRODUCTS as ProductEntity[])
-  ).filter((p) => {
+  // Use database products directly so POS Checkout and Inventory always show the exact same items
+  const displayProducts: ProductEntity[] = products.filter((p) => {
     const matchesSearch =
       !productSearch ||
       (p.name_en && p.name_en.toLowerCase().includes(productSearch.toLowerCase())) ||

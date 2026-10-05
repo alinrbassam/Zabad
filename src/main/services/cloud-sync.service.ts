@@ -225,7 +225,7 @@ export class CloudSyncService {
           COALESCE(u.symbol, 'Kg') as unit
         FROM products p
         LEFT JOIN inventory_balances b ON p.id = b.product_id
-        LEFT JOIN units u ON p.unit_id = u.id
+        LEFT JOIN units u ON p.base_unit_id = u.id
         WHERE (p.deleted_at IS NULL OR p.deleted_at = '') AND p.is_active = 1
         ORDER BY current_stock ASC
       `);
