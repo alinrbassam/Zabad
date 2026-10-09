@@ -18,7 +18,7 @@ export class ReportsService {
   }
 
   public getDashboardMetrics(options: ReportFilterOptions) {
-    const isOwner = options.userRole === 'Owner' || !options.userRole;
+    const isOwner = !options.userRole || options.userRole.toLowerCase() !== 'cashier';
 
     const startDate =
       options.startDate || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
@@ -135,7 +135,7 @@ export class ReportsService {
   }
 
   public getProductPerformanceReport(options: ReportFilterOptions) {
-    const isOwner = options.userRole === 'Owner' || !options.userRole;
+    const isOwner = !options.userRole || options.userRole.toLowerCase() !== 'cashier';
     const startDate =
       options.startDate || new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
     const endDate = options.endDate || new Date().toISOString().slice(0, 10);
@@ -162,7 +162,7 @@ export class ReportsService {
   }
 
   public getInventoryValuationReport(options: ReportFilterOptions) {
-    const isOwner = options.userRole === 'Owner' || !options.userRole;
+    const isOwner = !options.userRole || options.userRole.toLowerCase() !== 'cashier';
 
     const selectFields = isOwner
       ? `p.id, p.name_en, p.sku, p.avg_cost, p.selling_price, COALESCE(b.quantity_on_hand, 0) as stock_qty,
@@ -183,7 +183,7 @@ export class ReportsService {
   }
 
   public getFinancialReport(options: ReportFilterOptions) {
-    if (options.userRole && options.userRole !== 'Owner') {
+    if (options.userRole && options.userRole.toLowerCase() === 'cashier') {
       throw new Error('Access Denied: Financial P&L statements are restricted to Business Owners.');
     }
 

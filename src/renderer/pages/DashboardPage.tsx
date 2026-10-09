@@ -126,8 +126,11 @@ export const DashboardPage: React.FC = () => {
           }
         }
 
-        // Filter sales by date range
-        const filteredSales = allSales.filter((s) => {
+        // Filter valid sales by date range
+        const validSales = allSales.filter(
+          (s) => s.payment_status !== 'Cancelled' && s.payment_status !== 'Refunded',
+        );
+        const filteredSales = validSales.filter((s) => {
           if (!s.created_at) return false;
           if (timeRange === 'all') return true;
           return s.created_at.slice(0, 10) >= startDate;
@@ -136,8 +139,19 @@ export const DashboardPage: React.FC = () => {
         const rev = filteredSales.reduce((acc, s) => acc + (s.grand_total || 0), 0);
         const orderCount = filteredSales.length;
         const avg = orderCount > 0 ? rev / orderCount : 0;
-        const estProfit = rev * 0.32; // 32% estimated gross margin for fresh seafood
-        const marginPct = rev > 0 ? (estProfit / rev) * 100 : 32;
+
+        // Fetch real dashboard metrics and product performance from backend
+        let realGrossProfit = 0;
+        if (window.api?.getReportsDashboard) {
+          const metricsRes = await window.api.getReportsDashboard({
+            startDate,
+            endDate: todayStr,
+          });
+          if (metricsRes?.success && metricsRes.data) {
+            realGrossProfit = Number((metricsRes.data as any).grossProfit ?? 0);
+          }
+        }
+        const marginPct = rev > 0 ? Math.max(0, (realGrossProfit / rev) * 100) : 0;
 
         // 3. Purchase Orders
         let purchasesSum = 0;
@@ -154,7 +168,7 @@ export const DashboardPage: React.FC = () => {
 
         setStats({
           totalRevenue: rev,
-          grossProfit: estProfit,
+          grossProfit: realGrossProfit,
           profitMargin: Math.round(marginPct * 10) / 10,
           ordersCount: orderCount,
           averageTicket: avg,
@@ -166,92 +180,106 @@ export const DashboardPage: React.FC = () => {
           todayPurchases: purchasesSum,
         });
 
-        // 4. Top Selling Products (Aggregated or realistic Fish demo)
-        const defaultTop: TopProductItem[] = [
-          {
-            id: 'top-1',
-            name: language === 'ar' ? 'سالمون نرويجي طازج (Salmon)' : 'Fresh Norwegian Salmon',
-            category: language === 'ar' ? 'أسماك طازجة' : 'Fresh Fish',
-            quantitySold: timeRange === 'today' ? 18.5 : timeRange === 'week' ? 95.0 : 340.0,
-            revenue: timeRange === 'today' ? 416.25 : timeRange === 'week' ? 2137.5 : 7650.0,
-            unit: 'Kg',
-          },
-          {
-            id: 'top-2',
-            name: language === 'ar' ? 'سمك دنيس بلدي (Sea Bream)' : 'Fresh Sea Bream',
-            category: language === 'ar' ? 'أسماك طازجة' : 'Fresh Fish',
-            quantitySold: timeRange === 'today' ? 14.0 : timeRange === 'week' ? 78.5 : 280.0,
-            revenue: timeRange === 'today' ? 196.0 : timeRange === 'week' ? 1099.0 : 3920.0,
-            unit: 'Kg',
-          },
-          {
-            id: 'top-3',
-            name: language === 'ar' ? 'روبيان جامبو طازج (Jumbo Shrimp)' : 'Fresh Jumbo Shrimp',
-            category: language === 'ar' ? 'قشريات وروبيان' : 'Shrimp & Shellfish',
-            quantitySold: timeRange === 'today' ? 8.25 : timeRange === 'week' ? 44.0 : 165.0,
-            revenue: timeRange === 'today' ? 231.0 : timeRange === 'week' ? 1232.0 : 4620.0,
-            unit: 'Kg',
-          },
-          {
-            id: 'top-4',
-            name: language === 'ar' ? 'سمك قاروص طازج (Sea Bass)' : 'Fresh Sea Bass',
-            category: language === 'ar' ? 'أسماك طازجة' : 'Fresh Fish',
-            quantitySold: timeRange === 'today' ? 7.5 : timeRange === 'week' ? 38.0 : 142.0,
-            revenue: timeRange === 'today' ? 123.75 : timeRange === 'week' ? 627.0 : 2343.0,
-            unit: 'Kg',
-          },
-          {
-            id: 'top-5',
-            name: language === 'ar' ? 'فيليه سمك أبيض (White Fillet)' : 'White Fish Fillet',
-            category: language === 'ar' ? 'فيليه وقطع' : 'Fillets & Cuts',
-            quantitySold: timeRange === 'today' ? 5.0 : timeRange === 'week' ? 26.0 : 98.0,
-            revenue: timeRange === 'today' ? 97.5 : timeRange === 'week' ? 507.0 : 1911.0,
-            unit: 'Kg',
-          },
-        ];
-        setTopProducts(defaultTop);
+        // 4. Load Products & Categories for real Top Products & Category Breakdown
+        const productMap = new Map<string, any>();
+        const categoryMap = new Map<string, string>();
 
-        // 5. Category Breakdown
-        const defaultCategories: CategorySale[] = [
-          {
-            id: 'cat-fresh',
-            name: language === 'ar' ? 'أسماك طازجة كاملة (Fresh Fish)' : 'Whole Fresh Fish',
-            revenue: rev > 0 ? rev * 0.55 : 736.0,
-            percentage: 55,
-            color: 'bg-sky-500',
-          },
-          {
-            id: 'cat-shrimp',
-            name: language === 'ar' ? 'روبيان ومأكولات بحرية (Shrimp)' : 'Shrimp & Shellfish',
-            revenue: rev > 0 ? rev * 0.23 : 308.0,
-            percentage: 23,
-            color: 'bg-indigo-500',
-          },
-          {
-            id: 'cat-fillet',
-            name: language === 'ar' ? 'فيليه وقطع جاهزة (Fillets)' : 'Fillets & Steaks',
-            revenue: rev > 0 ? rev * 0.15 : 201.0,
-            percentage: 15,
-            color: 'bg-emerald-500',
-          },
-          {
-            id: 'cat-extras',
-            name: language === 'ar' ? 'بهارات وتتبيلات (Spices & Extras)' : 'Spices & Seasoning',
-            revenue: rev > 0 ? rev * 0.07 : 93.0,
-            percentage: 7,
-            color: 'bg-amber-500',
-          },
-        ];
-        setCategorySales(defaultCategories);
+        if (window.api?.getCategories) {
+          const catRes = await window.api.getCategories();
+          if (catRes?.success && Array.isArray(catRes.data)) {
+            for (const c of catRes.data) {
+              categoryMap.set(c.id, language === 'ar' ? c.name_ar || c.name_en : c.name_en);
+            }
+          }
+        }
 
-        // 6. Last 7 Days Daily Trend
-        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-        const defaultTrend: DailySalesTrend[] = days.map((d, i) => ({
-          day: d,
-          amount: Math.round(350 + Math.sin(i * 1.5) * 180 + i * 40),
-          orders: Math.round(12 + Math.sin(i) * 5 + i * 2),
-        }));
-        setDailyTrend(defaultTrend);
+        if (window.api?.searchProducts) {
+          const prodRes = await window.api.searchProducts('', 500, 0);
+          if (prodRes?.success && Array.isArray(prodRes.data)) {
+            for (const p of prodRes.data) {
+              productMap.set(p.id, p);
+            }
+          }
+        }
+
+        const realTopProducts: TopProductItem[] = [];
+        const categoryRevTotals = new Map<string, number>();
+
+        if (window.api?.getProductReport) {
+          const perfRes = await window.api.getProductReport({
+            startDate,
+            endDate: todayStr,
+          });
+          if (perfRes?.success && Array.isArray(perfRes.data)) {
+            const sortedByRev: any[] = [...perfRes.data].sort(
+              (a: any, b: any) => Number(b.total_revenue || 0) - Number(a.total_revenue || 0),
+            );
+
+            for (const row of sortedByRev) {
+              const pInfo = productMap.get(row.id);
+              const catId = pInfo?.category_id || 'uncategorized';
+              const catName =
+                categoryMap.get(catId) ||
+                (language === 'ar' ? 'عام' : 'General');
+              const itemRev = Number(row.total_revenue || 0);
+              const itemQty = Number(row.total_sold_qty || 0);
+
+              if (itemRev > 0 || itemQty > 0) {
+                categoryRevTotals.set(catName, (categoryRevTotals.get(catName) || 0) + itemRev);
+              }
+
+              if (realTopProducts.length < 5 && (itemRev > 0 || itemQty > 0)) {
+                realTopProducts.push({
+                  id: row.id,
+                  name:
+                    language === 'ar'
+                      ? pInfo?.name_ar || row.name_en
+                      : row.name_en,
+                  category: catName,
+                  quantitySold: Math.round(itemQty * 100) / 100,
+                  revenue: Math.round(itemRev * 100) / 100,
+                  unit: pInfo?.unit_symbol || 'Kg',
+                });
+              }
+            }
+          }
+        }
+
+        setTopProducts(realTopProducts);
+
+        // 5. Real Category Breakdown
+        const colors = ['bg-sky-500', 'bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500'];
+        const totalCatRev = Array.from(categoryRevTotals.values()).reduce((a, b) => a + b, 0);
+        const realCategories: CategorySale[] = Array.from(categoryRevTotals.entries())
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([name, catRev], idx) => ({
+            id: `cat-${idx}`,
+            name,
+            revenue: Math.round(catRev * 100) / 100,
+            percentage: totalCatRev > 0 ? Math.round((catRev / totalCatRev) * 100) : 0,
+            color: colors[idx % colors.length],
+          }));
+
+        setCategorySales(realCategories);
+
+        // 6. Real Last 7 Days Daily Trend
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const realTrend: DailySalesTrend[] = [];
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date(now.getTime() - i * 86400000);
+          const dateKey = d.toISOString().split('T')[0];
+          const daySales = validSales.filter(
+            (s) => s.created_at && s.created_at.slice(0, 10) === dateKey,
+          );
+          const dayAmount = daySales.reduce((sum, s) => sum + (s.grand_total || 0), 0);
+          realTrend.push({
+            day: dayNames[d.getDay()],
+            amount: Math.round(dayAmount * 100) / 100,
+            orders: daySales.length,
+          });
+        }
+        setDailyTrend(realTrend);
       } catch (err) {
         console.error('Failed to load dashboard metrics', err);
       } finally {
@@ -260,6 +288,8 @@ export const DashboardPage: React.FC = () => {
     };
 
     loadDashboardData();
+    window.addEventListener('supabase-data-synced', loadDashboardData);
+    return () => window.removeEventListener('supabase-data-synced', loadDashboardData);
   }, [timeRange, language]);
 
   const maxProductRev = Math.max(...topProducts.map((p) => p.revenue), 1);
@@ -522,56 +552,64 @@ export const DashboardPage: React.FC = () => {
 
             {/* List of Top Products with Progress Bars */}
             <div className="space-y-3 pt-1">
-              {topProducts.map((prod, idx) => {
-                const percent = Math.min(100, Math.round((prod.revenue / maxProductRev) * 100));
-                return (
-                  <div
-                    key={prod.id}
-                    className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl space-y-2 border border-slate-100 dark:border-slate-800/80 transition-all hover:border-sky-500/40"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center space-x-2.5 rtl:space-x-reverse">
-                        <span
-                          className={`h-6 w-6 rounded-full flex items-center justify-center font-black text-[11px] ${
-                            idx === 0
-                              ? 'bg-amber-500 text-white shadow-xs shadow-amber-500/30'
-                              : idx === 1
-                              ? 'bg-slate-300 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
-                              : idx === 2
-                              ? 'bg-amber-700 text-white'
-                              : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                          }`}
-                        >
-                          #{idx + 1}
-                        </span>
-                        <div>
-                          <span className="font-bold text-slate-900 dark:text-slate-100 block">
-                            {prod.name}
+              {topProducts.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  {language === 'ar'
+                    ? 'لا توجد مبيعات مسجلة في هذه الفترة'
+                    : 'No product sales recorded for this period'}
+                </div>
+              ) : (
+                topProducts.map((prod, idx) => {
+                  const percent = Math.min(100, Math.round((prod.revenue / maxProductRev) * 100));
+                  return (
+                    <div
+                      key={prod.id}
+                      className="p-3 bg-slate-50 dark:bg-slate-850 rounded-xl space-y-2 border border-slate-100 dark:border-slate-800/80 transition-all hover:border-sky-500/40"
+                    >
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center space-x-2.5 rtl:space-x-reverse">
+                          <span
+                            className={`h-6 w-6 rounded-full flex items-center justify-center font-black text-[11px] ${
+                              idx === 0
+                                ? 'bg-amber-500 text-white shadow-xs shadow-amber-500/30'
+                                : idx === 1
+                                ? 'bg-slate-300 text-slate-800 dark:bg-slate-700 dark:text-slate-200'
+                                : idx === 2
+                                ? 'bg-amber-700 text-white'
+                                : 'bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                          >
+                            #{idx + 1}
                           </span>
-                          <span className="text-[10px] text-slate-400">{prod.category}</span>
+                          <div>
+                            <span className="font-bold text-slate-900 dark:text-slate-100 block">
+                              {prod.name}
+                            </span>
+                            <span className="text-[10px] text-slate-400">{prod.category}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right rtl:text-left">
+                          <span className="font-black text-slate-900 dark:text-slate-100 font-mono text-sm block">
+                            {formatCurrency(prod.revenue)}
+                          </span>
+                          <span className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold font-mono">
+                            {prod.quantitySold} {prod.unit}
+                          </span>
                         </div>
                       </div>
 
-                      <div className="text-right rtl:text-left">
-                        <span className="font-black text-slate-900 dark:text-slate-100 font-mono text-sm block">
-                          {formatCurrency(prod.revenue)}
-                        </span>
-                        <span className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold font-mono">
-                          {prod.quantitySold} {prod.unit}
-                        </span>
+                      {/* Progress Fill Bar */}
+                      <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="bg-gradient-to-r from-sky-500 to-indigo-600 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${percent}%` }}
+                        />
                       </div>
                     </div>
-
-                    {/* Progress Fill Bar */}
-                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-gradient-to-r from-sky-500 to-indigo-600 h-full rounded-full transition-all duration-500"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </Card>
         </div>
@@ -598,22 +636,30 @@ export const DashboardPage: React.FC = () => {
 
               {/* Category Share List */}
               <div className="space-y-3.5 pt-3">
-                {categorySales.map((cat) => (
-                  <div key={cat.id} className="space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center font-bold">
-                      <span className="text-slate-800 dark:text-slate-200">{cat.name}</span>
-                      <span className="font-mono text-slate-900 dark:text-slate-100">
-                        {formatCurrency(cat.revenue)} ({cat.percentage}%)
-                      </span>
-                    </div>
-                    <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className={`${cat.color} h-full rounded-full transition-all duration-500`}
-                        style={{ width: `${cat.percentage}%` }}
-                      />
-                    </div>
+                {categorySales.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-slate-400">
+                    {language === 'ar'
+                      ? 'لا توجد مبيعات حسب الأقسام بعد'
+                      : 'No category sales recorded yet'}
                   </div>
-                ))}
+                ) : (
+                  categorySales.map((cat) => (
+                    <div key={cat.id} className="space-y-1.5 text-xs">
+                      <div className="flex justify-between items-center font-bold">
+                        <span className="text-slate-800 dark:text-slate-200">{cat.name}</span>
+                        <span className="font-mono text-slate-900 dark:text-slate-100">
+                          {formatCurrency(cat.revenue)} ({cat.percentage}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                        <div
+                          className={`${cat.color} h-full rounded-full transition-all duration-500`}
+                          style={{ width: `${cat.percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
@@ -622,9 +668,13 @@ export const DashboardPage: React.FC = () => {
               <span className="font-bold block mb-0.5">
                 💡 {language === 'ar' ? 'ملاحظة الأداء:' : 'Key Insight:'}
               </span>
-              {language === 'ar'
-                ? 'الأسماك الطازجة والروبيان تشكل أكثر من 75% من مجمل إيرادات المتجر.'
-                : 'Whole Fresh Fish and Jumbo Shrimp drive over 75% of your total store revenue.'}
+              {categorySales.length > 0
+                ? language === 'ar'
+                  ? `قسم "${categorySales[0].name}" يتصدر المبيعات بنسبة ${categorySales[0].percentage}% من الإيرادات.`
+                  : `"${categorySales[0].name}" leads with ${categorySales[0].percentage}% of total category revenue.`
+                : language === 'ar'
+                ? 'ستظهر تحليلات الأقسام تلقائياً عند تسجيل المبيعات.'
+                : 'Category insights will appear automatically as sales are recorded.'}
             </div>
           </Card>
         </div>
@@ -655,7 +705,8 @@ export const DashboardPage: React.FC = () => {
               {/* Bar Histogram */}
               <div className="pt-6 flex items-end justify-between gap-2 h-44 px-1">
                 {dailyTrend.map((d, i) => {
-                  const heightPercent = Math.max(15, Math.round((d.amount / maxDailyTrend) * 100));
+                  const heightPercent =
+                    d.amount > 0 ? Math.max(12, Math.round((d.amount / maxDailyTrend) * 100)) : 4;
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-2 group">
                       <span className="text-[10px] font-bold text-slate-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
@@ -677,8 +728,14 @@ export const DashboardPage: React.FC = () => {
             </div>
 
             <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between text-xs text-slate-500">
-              <span>{language === 'ar' ? 'المتوسط اليومي للمبيعات' : 'Daily Sales Avg'}</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">↑ 12% Growth</span>
+              <span>{language === 'ar' ? 'المتوسط اليومي (7 أيام)' : '7-Day Daily Avg'}</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                {formatCurrency(
+                  dailyTrend.length > 0
+                    ? dailyTrend.reduce((sum, d) => sum + d.amount, 0) / dailyTrend.length
+                    : 0,
+                )}
+              </span>
             </div>
           </Card>
         </div>

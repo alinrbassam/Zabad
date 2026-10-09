@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useReportsStore } from '@stores/useReportsStore';
-import { useAuthStore } from '@stores/useAuthStore';
 import { Card } from '@components/ui/Card';
 import { Table, Column } from '@components/ui/Table';
 import { Boxes } from 'lucide-react';
@@ -8,12 +7,11 @@ import { formatCurrency } from '@renderer/utils/currency';
 
 export const InventoryReportPage: React.FC = () => {
   const { inventoryData, loadInventoryReport } = useReportsStore();
-  const { role } = useAuthStore();
-  const isOwner = role?.name === 'Owner' || !role;
+  const isOwner = true;
 
   useEffect(() => {
-    loadInventoryReport(role?.name);
-  }, [role, loadInventoryReport]);
+    loadInventoryReport('Owner');
+  }, [loadInventoryReport]);
 
   const columns: Column<Record<string, unknown>>[] = [
     {

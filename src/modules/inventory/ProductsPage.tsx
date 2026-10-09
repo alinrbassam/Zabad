@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useProductStore } from '@stores/useProductStore';
 import { useAuthStore } from '@stores/useAuthStore';
 import { useLanguageStore } from '@stores/useLanguageStore';
@@ -31,16 +31,38 @@ export const ProductsPage: React.FC = () => {
     loadProducts(search);
   }, [loadProducts, search]);
 
+  const stats = useMemo(() => {
+    const totalTypes = products.length;
+    const totalUnits = products.reduce((sum, p) => sum + (p.quantity_on_hand || 0), 0);
+    const totalCost = products.reduce(
+      (sum, p) => sum + (p.quantity_on_hand || 0) * (p.purchase_cost || 0),
+      0,
+    );
+    const totalSelling = products.reduce(
+      (sum, p) => sum + (p.quantity_on_hand || 0) * (p.selling_price || 0),
+      0,
+    );
+    const potentialProfit = Math.max(0, totalSelling - totalCost);
+
+    return {
+      totalTypes,
+      totalUnits: Math.round(totalUnits * 100) / 100,
+      totalCost,
+      totalSelling,
+      potentialProfit,
+    };
+  }, [products]);
+
   const columns: Column<ProductEntity>[] = [
     {
       key: 'name_en',
-      header: 'Product Name',
+      header: language === 'ar' ? 'اسم المنتج' : language === 'fr' ? 'Nom du Produit' : 'Product Name',
       render: (p) => (
         <div>
           <span className="font-bold text-slate-900 dark:text-slate-100 block">{p.name_en}</span>
           <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-            {p.name_ar && <span>{p.name_ar}</span>}
-            {p.name_ar && <span>•</span>}
+            <span>{p.name_ar || p.name_en}</span>
+            <span>•</span>
             <span className="font-mono">SKU: {p.sku}</span>
           </div>
         </div>
@@ -48,7 +70,7 @@ export const ProductsPage: React.FC = () => {
     },
     {
       key: 'quantity_on_hand' as keyof ProductEntity,
-      header: 'Stock On Hand',
+      header: language === 'ar' ? 'الكمية المتوفرة' : language === 'fr' ? 'Stock Disponible' : 'Stock On Hand',
       render: (p: ProductEntity) => {
         const qty = p.quantity_on_hand ?? 0;
         const threshold =
@@ -56,10 +78,10 @@ export const ProductsPage: React.FC = () => {
             ? p.reorder_level
             : p.min_stock && p.min_stock > 0
               ? p.min_stock
-              : 100;
+              : 10;
         const isZero = qty <= 0;
         const isLow = qty < threshold;
-        const unit = p.unit_symbol || '';
+        const unit = p.unit_symbol || 'pcs';
 
         return (
           <div className="flex flex-col space-y-0.5">
@@ -90,7 +112,7 @@ export const ProductsPage: React.FC = () => {
     },
     {
       key: 'selling_price',
-      header: 'Selling Price (FCFA)',
+      header: language === 'ar' ? 'سعر البيع (FCFA)' : language === 'fr' ? 'Prix de Vente (FCFA)' : 'Selling Price (FCFA)',
       render: (p) => (
         <span className="font-black text-emerald-600 dark:text-emerald-400 font-mono">
           {formatCurrency(p.selling_price)}
@@ -101,18 +123,34 @@ export const ProductsPage: React.FC = () => {
       ? [
           {
             key: 'purchase_cost' as keyof ProductEntity,
-            header: 'Purchase Cost (FCFA)',
+            header: language === 'ar' ? 'سعر التكلفة (FCFA)' : language === 'fr' ? "Coût d'Achat (FCFA)" : 'Purchase Cost (FCFA)',
             render: (p: ProductEntity) => (
               <span className="text-slate-500 font-mono text-xs">
                 {formatCurrency(p.purchase_cost)}
               </span>
             ),
           },
+          {
+            key: 'stock_cost_value' as any,
+            header: language === 'ar' ? 'إجمالي قيمة المخزون (FCFA)' : language === 'fr' ? 'Valeur Totale du Stock (FCFA)' : 'Total Stock Value (FCFA)',
+            render: (p: ProductEntity) => {
+              const qty = p.quantity_on_hand || 0;
+              const cost = p.purchase_cost || 0;
+              const val = qty * cost;
+              return (
+                <div>
+                  <span className="font-extrabold text-xs text-sky-600 dark:text-sky-400 font-mono block">
+                    {formatCurrency(val)}
+                  </span>
+                </div>
+              );
+            },
+          },
         ]
       : []),
     {
       key: 'is_active',
-      header: 'Status',
+      header: language === 'ar' ? 'الحالة' : language === 'fr' ? 'Statut' : 'Status',
       render: (p) => (
         <Badge variant={p.is_active ? 'success' : 'danger'}>
           {p.is_active ? 'Active' : 'Archived'}
@@ -154,10 +192,18 @@ export const ProductsPage: React.FC = () => {
           <Package className="h-6 w-6 text-sky-600" />
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Product Management
+              {language === 'ar'
+                ? 'إدارة المنتجات وتقييم المخزون'
+                : language === 'fr'
+                ? 'Gestion des Produits & Valorisation du Stock'
+                : 'Product Management & Stock Valuation'}
             </h1>
             <p className="text-xs text-slate-500">
-              Manage product master records, barcodes, prices, units, and stock tracking settings.
+              {language === 'ar'
+                ? 'إدارة بيانات المنتجات والكميات المتوفرة وقيمة المخزون الفورية.'
+                : language === 'fr'
+                ? 'Gérez les produits, les quantités en stock et la valorisation en temps réel.'
+                : 'Manage product records, stock quantities, and view real-time inventory valuations.'}
             </p>
           </div>
         </div>
@@ -168,8 +214,102 @@ export const ProductsPage: React.FC = () => {
           className="flex items-center space-x-2 bg-sky-600 hover:bg-sky-500 font-bold"
         >
           <Plus className="h-4 w-4" />
-          <span>Add Product</span>
+          <span>{language === 'ar' ? '+ إضافة منتج' : language === 'fr' ? 'Ajouter un Produit' : 'Add Product'}</span>
         </Button>
+      </div>
+
+      {/* Inventory & Stock Valuation Summary */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        {/* Card 1: Total Units & Products */}
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between shadow-xs">
+          <div>
+            <p className="text-[11px] font-semibold text-slate-400">
+              {language === 'ar'
+                ? 'إجمالي الأصناف والقطع'
+                : language === 'fr'
+                ? 'Total Unités en Stock'
+                : 'Total Units In Stock'}
+            </p>
+            <p className="text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
+              {stats.totalUnits.toLocaleString()}{' '}
+              <span className="text-xs font-normal text-slate-500">
+                {language === 'ar' ? 'وحدة' : language === 'fr' ? 'unités' : 'units'}
+              </span>
+            </p>
+            <p className="text-[10px] text-slate-400 mt-0.5">
+              {stats.totalTypes}{' '}
+              {language === 'ar'
+                ? 'منتج مسجل'
+                : language === 'fr'
+                ? 'produits actifs'
+                : 'active products'}
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center font-bold">
+            <Package className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Card 2: Total Stock Cost Valuation */}
+        {canViewCost && (
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-amber-500/20 dark:border-amber-500/30 flex items-center justify-between shadow-xs">
+            <div>
+              <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                {language === 'ar'
+                  ? 'قيمة المخزون (سعر التكلفة)'
+                  : language === 'fr'
+                  ? 'Valorisation Stock (Coût)'
+                  : 'Stock Valuation (Cost Value)'}
+              </p>
+              <p className="text-xl font-black text-amber-600 dark:text-amber-400 font-mono mt-0.5">
+                {formatCurrency(stats.totalCost)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold text-lg">
+              💰
+            </div>
+          </div>
+        )}
+
+        {/* Card 3: Total Stock Selling Valuation */}
+        <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-emerald-500/20 dark:border-emerald-500/30 flex items-center justify-between shadow-xs">
+          <div>
+            <p className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+              {language === 'ar'
+                ? 'قيمة المخزون (سعر البيع)'
+                : language === 'fr'
+                ? 'Valorisation Stock (Vente)'
+                : 'Stock Valuation (Selling Value)'}
+            </p>
+            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono mt-0.5">
+              {formatCurrency(stats.totalSelling)}
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold text-lg">
+            🏷️
+          </div>
+        </div>
+
+        {/* Card 4: Potential Gross Profit */}
+        {canViewCost && (
+          <div className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-blue-500/20 dark:border-blue-500/30 flex items-center justify-between shadow-xs">
+            <div>
+              <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400">
+                {language === 'ar'
+                  ? 'الربح الإجمالي المتوقع'
+                  : language === 'fr'
+                  ? 'Bénéfice Brut Potentiel'
+                  : 'Potential Gross Profit'}
+              </p>
+              <p className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono mt-0.5">
+                {formatCurrency(stats.potentialProfit)}
+              </p>
+            </div>
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center font-bold text-lg">
+              📈
+            </div>
+          </div>
+        )}
       </div>
 
       <Card>
@@ -177,7 +317,13 @@ export const ProductsPage: React.FC = () => {
           <SearchBox
             value={search}
             onChange={setSearch}
-            placeholder="Search products by name..."
+            placeholder={
+              language === 'ar'
+                ? 'بحث عن منتج بالاسم...'
+                : language === 'fr'
+                ? 'Rechercher un produit...'
+                : 'Search products by name...'
+            }
           />
         </div>
 

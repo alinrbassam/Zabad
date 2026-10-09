@@ -305,18 +305,18 @@ export const Sidebar: React.FC = () => {
               <div key={sec.id} className="space-y-1 py-1 border-b border-slate-800/40">
                 {sec.items.map((item) => {
                   const ItemIcon = item.icon;
+                  const isItemActive = pathname === item.path;
                   return (
                     <NavLink
                       key={item.id}
                       to={item.path}
+                      end
                       title={item.label}
-                      className={({ isActive }) =>
-                        `flex items-center justify-center p-2.5 rounded-xl text-xs font-medium transition-all ${
-                          isActive
-                            ? 'bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 shadow-xs'
-                            : 'hover:bg-slate-800/60 text-slate-400 hover:text-slate-200'
-                        }`
-                      }
+                      className={`flex items-center justify-center p-2.5 rounded-xl text-xs font-medium transition-all ${
+                        isItemActive
+                          ? 'bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30 shadow-xs'
+                          : 'hover:bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                      }`}
                     >
                       <ItemIcon className="h-4 w-4 shrink-0" />
                     </NavLink>
@@ -348,17 +348,17 @@ export const Sidebar: React.FC = () => {
                 <div className="pl-4 rtl:pl-0 rtl:pr-4 space-y-1 border-l rtl:border-l-0 rtl:border-r border-slate-800/70 ml-4 rtl:ml-0 rtl:mr-4">
                   {sec.items.map((item) => {
                     const ItemIcon = item.icon;
+                    const isItemActive = pathname === item.path;
                     return (
                       <NavLink
                         key={item.id}
                         to={item.path}
-                        className={({ isActive }) =>
-                          `flex items-center space-x-2.5 rtl:space-x-reverse px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                            isActive
-                              ? 'bg-cyan-500/15 text-cyan-400 font-bold border border-cyan-500/30 shadow-xs'
-                              : 'hover:bg-slate-800/60 text-slate-400 hover:text-slate-200'
-                          }`
-                        }
+                        end
+                        className={`flex items-center space-x-2.5 rtl:space-x-reverse px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                          isItemActive
+                            ? 'bg-cyan-500/15 text-cyan-400 font-bold border border-cyan-500/30 shadow-xs'
+                            : 'hover:bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                        }`}
                       >
                         <ItemIcon className="h-3.5 w-3.5 flex-shrink-0" />
                         <span>{item.label}</span>

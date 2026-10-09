@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react';
 import { useReportsStore } from '@stores/useReportsStore';
-import { useAuthStore } from '@stores/useAuthStore';
 import { Card } from '@components/ui/Card';
 import { Input } from '@components/ui/Input';
 import {
@@ -17,12 +16,11 @@ export const ReportsDashboardPage: React.FC = () => {
   const { startDate, endDate, setDateRange, dashboardMetrics, loadDashboardMetrics } =
     useReportsStore();
 
-  const { role } = useAuthStore();
-  const isOwner = role?.name === 'Owner' || !role;
+  const isOwner = true;
 
   useEffect(() => {
-    loadDashboardMetrics(role?.name);
-  }, [startDate, endDate, role, loadDashboardMetrics]);
+    loadDashboardMetrics('Owner');
+  }, [startDate, endDate, loadDashboardMetrics]);
 
   return (
     <div className="space-y-6">
