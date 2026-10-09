@@ -91,7 +91,12 @@ export default function DashboardPage() {
   };
 
   const formatFCFA = (amount: number = 0) => {
-    return Math.round(amount).toLocaleString() + ' FCFA';
+    const num = Number(amount) || 0;
+    const formatted =
+      num % 1 !== 0
+        ? num.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+        : Math.round(num).toLocaleString();
+    return `${formatted} FCFA`;
   };
 
   const filteredDebtors = useMemo(() => {
