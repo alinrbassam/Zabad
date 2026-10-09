@@ -10,6 +10,7 @@ import { POSPaymentModal } from './POSPaymentModal';
 import { POSHoldResumeModal } from './POSHoldResumeModal';
 import { POSHoldSaveModal } from './POSHoldSaveModal';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
+import { DailyClosingReportModal } from './DailyClosingReportModal';
 import { formatCurrency } from '../../renderer/utils/currency';
 import {
   Search,
@@ -24,6 +25,7 @@ import {
   Fish,
   Tag,
   Package,
+  FileText,
 } from 'lucide-react';
 
 export const POSTerminalPage: React.FC = () => {
@@ -52,6 +54,7 @@ export const POSTerminalPage: React.FC = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [showHoldSaveModal, setShowHoldSaveModal] = useState(false);
+  const [showClosingReportModal, setShowClosingReportModal] = useState(false);
   const [lastCompletedSale, setLastCompletedSale] = useState<SalesOrderEntity | null>(null);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -244,6 +247,22 @@ export const POSTerminalPage: React.FC = () => {
               />
             </div>
           </div>
+
+          {/* Daily Closing Report (Z-Report) Button */}
+          <button
+            onClick={() => setShowClosingReportModal(true)}
+            className="flex items-center space-x-1.5 rtl:space-x-reverse bg-white hover:bg-sky-50 border border-slate-200 hover:border-sky-300 text-slate-700 hover:text-sky-700 rounded-2xl px-3 py-2 shadow-sm text-xs font-bold transition-all select-none whitespace-nowrap"
+            title={language === 'ar' ? 'تقرير إغلاق اليومية (58 مم)' : 'Daily Closing Report (Z-Report)'}
+          >
+            <FileText className="h-3.5 w-3.5 text-sky-600" />
+            <span>
+              {language === 'ar'
+                ? 'تقرير الإغلاق'
+                : language === 'fr'
+                ? 'Clôture Caisse'
+                : 'Closing Report'}
+            </span>
+          </button>
 
           {/* Quick Zoom on POS Screen */}
           <div className="hidden sm:flex items-center bg-white border border-slate-200 rounded-2xl px-2 py-1 shadow-sm space-x-0.5 rtl:space-x-reverse text-xs select-none">
@@ -602,8 +621,14 @@ export const POSTerminalPage: React.FC = () => {
         isOpen={Boolean(lastCompletedSale)}
         onClose={() => setLastCompletedSale(null)}
         sale={lastCompletedSale}
-        businessName={language === 'ar' ? 'متجر خليل' : 'Khalil Store'}
+        businessName={language === 'ar' ? 'متجر علي خليل' : 'Ali Khalil Store'}
         businessAddress={language === 'ar' ? 'السوق المركزي' : 'Central Market'}
+      />
+
+      {/* End-of-Day / Shift Closing Report (58mm Z-Report) */}
+      <DailyClosingReportModal
+        isOpen={showClosingReportModal}
+        onClose={() => setShowClosingReportModal(false)}
       />
     </div>
   );

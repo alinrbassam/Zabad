@@ -9,7 +9,8 @@ import { Button } from '@components/ui/Button';
 import { Badge } from '@components/ui/Badge';
 import { SalesOrderEntity } from '@shared/types';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
-import { History, Printer, Undo2 } from 'lucide-react';
+import { DailyClosingReportModal } from './DailyClosingReportModal';
+import { History, Printer, Undo2, FileText } from 'lucide-react';
 import { formatDateTime } from '@utils/date';
 import { formatCurrency } from '../../renderer/utils/currency';
 
@@ -20,6 +21,7 @@ export const SalesHistoryPage: React.FC = () => {
   const { language } = useLanguageStore();
   const [search, setSearch] = useState('');
   const [activeReceiptSale, setActiveReceiptSale] = useState<SalesOrderEntity | null>(null);
+  const [showClosingReportModal, setShowClosingReportModal] = useState(false);
 
   useEffect(() => {
     loadSalesHistory(search);
@@ -162,16 +164,32 @@ export const SalesHistoryPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-3">
-        <History className="h-6 w-6 text-sky-600" />
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            POS Sales History
-          </h1>
-          <p className="text-xs text-slate-500">
-            Completed register receipts, thermal reprints, voids, and refunds.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <History className="h-6 w-6 text-sky-600" />
+          <div>
+            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              POS Sales History
+            </h1>
+            <p className="text-xs text-slate-500">
+              Completed register receipts, thermal reprints, voids, and refunds.
+            </p>
+          </div>
         </div>
+
+        <Button
+          onClick={() => setShowClosingReportModal(true)}
+          className="bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center space-x-2 rtl:space-x-reverse shadow-sm"
+        >
+          <FileText className="h-4 w-4" />
+          <span>
+            {language === 'ar'
+              ? 'تقرير إغلاق اليومية (Z-Report)'
+              : language === 'fr'
+              ? 'Rapport de Clôture (Z-Report)'
+              : 'Daily Closing Report (Z-Report)'}
+          </span>
+        </Button>
       </div>
 
       <Card className="space-y-4">
@@ -189,6 +207,11 @@ export const SalesHistoryPage: React.FC = () => {
         isOpen={Boolean(activeReceiptSale)}
         onClose={() => setActiveReceiptSale(null)}
         sale={selectedSale || activeReceiptSale}
+      />
+
+      <DailyClosingReportModal
+        isOpen={showClosingReportModal}
+        onClose={() => setShowClosingReportModal(false)}
       />
     </div>
   );

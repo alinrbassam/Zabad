@@ -4,20 +4,37 @@ import { SettingsRepository } from '../database/repositories/settings.repository
 import { BusinessRepository } from '../database/repositories/business.repository';
 import { LicensingService } from './licensing.service';
 
+export interface TopSellingProduct {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+  revenue: number;
+}
+
+export interface PeriodMetrics {
+  date: string;
+  revenue: number;
+  orderCount: number;
+  grossProfit: number;
+  cashAmount: number;
+  mobileMoneyAmount: number;
+  creditAmount: number;
+  expensesTotal: number;
+  netProfit: number;
+  topProducts?: TopSellingProduct[];
+}
+
 export interface StoreSyncSnapshot {
   storeName: string;
   timestamp: string;
   currency: string;
-  today: {
-    date: string;
-    revenue: number;
-    orderCount: number;
-    grossProfit: number;
-    cashAmount: number;
-    mobileMoneyAmount: number;
-    creditAmount: number;
-    expensesTotal: number;
-    netProfit: number;
+  today: PeriodMetrics;
+  periods?: {
+    today: PeriodMetrics;
+    yesterday: PeriodMetrics;
+    week: PeriodMetrics;
+    month: PeriodMetrics;
   };
   debts: {
     totalOutstanding: number;
@@ -111,13 +128,7 @@ export class CloudSyncService {
     });
   }
 
-  public buildSnapshot(): StoreSyncSnapshot {
-    const biz = this.businessRepo.getActiveBusiness();
-    const storeName = 'متجر علي خليل';
-    const currency = biz?.currency === 'USD' ? 'FCFA' : (biz?.currency || 'FCFA');
-    const todayStr = new Date().toISOString().slice(0, 10);
-
-    // 1. Today Sales
+  private buildPeriodMetrics(startDate: string, endDate: string): PeriodMetrics {
     const salesStmt = this.db.prepare(`
       SELECT
         COUNT(id) as orderCount,
@@ -126,9 +137,10 @@ export class CloudSyncService {
         COALESCE(SUM(CASE WHEN payment_method IN ('MOMO', 'OM', 'Orange Money', 'MTN Momo') THEN grand_total ELSE 0 END), 0) as mobileMoneyAmount,
         COALESCE(SUM(CASE WHEN payment_method IN ('Borrow', 'Credit') THEN grand_total ELSE 0 END), 0) as creditAmount
       FROM sales_orders
-      WHERE date(created_at) = date(?) AND payment_status NOT IN ('Cancelled', 'Refunded')
+      WHERE date(created_at) BETWEEN date(?) AND date(?)
+        AND payment_status NOT IN ('Cancelled', 'Refunded')
     `);
-    const salesData = salesStmt.get(todayStr) as {
+    const salesData = salesStmt.get(startDate, endDate) as {
       orderCount: number;
       revenue: number;
       cashAmount: number;
@@ -136,29 +148,96 @@ export class CloudSyncService {
       creditAmount: number;
     };
 
-    // COGS for today
     const cogsStmt = this.db.prepare(`
       SELECT COALESCE(SUM(i.quantity * i.cost_price), 0) as cogs
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE date(s.created_at) = date(?) AND s.payment_status NOT IN ('Cancelled', 'Refunded')
+      WHERE date(s.created_at) BETWEEN date(?) AND date(?)
+        AND s.payment_status NOT IN ('Cancelled', 'Refunded')
     `);
-    const cogsData = cogsStmt.get(todayStr) as { cogs: number };
+    const cogsData = cogsStmt.get(startDate, endDate) as { cogs: number };
     const grossProfit = Math.max(0, (salesData.revenue || 0) - (cogsData.cogs || 0));
 
-    // 2. Today Expenses
     let expensesTotal = 0;
-    let recentExpenses: Array<any> = [];
     try {
       const expTotalStmt = this.db.prepare(`
         SELECT COALESCE(SUM(amount), 0) as total
         FROM expenses
         WHERE (deleted_at IS NULL OR deleted_at = '')
-          AND (date(expense_date) = date(?) OR date(created_at) = date(?))
+          AND (
+            date(expense_date) BETWEEN date(?) AND date(?)
+            OR (expense_date IS NULL AND date(created_at) BETWEEN date(?) AND date(?))
+          )
       `);
-      const expRes = expTotalStmt.get(todayStr, todayStr) as { total: number };
+      const expRes = expTotalStmt.get(startDate, endDate, startDate, endDate) as { total: number };
       expensesTotal = expRes?.total || 0;
+    } catch {
+      // expenses table might be empty
+    }
 
+    let topProducts: TopSellingProduct[] = [];
+    try {
+      const topStmt = this.db.prepare(`
+        SELECT
+          COALESCE(p.id, i.product_id, i.product_name) as id,
+          COALESCE(p.name_en, i.product_name, 'Item') as name,
+          COALESCE(SUM(i.quantity), 0) as qty,
+          COALESCE(u.symbol, 'Kg') as unit,
+          COALESCE(SUM(i.line_total), 0) as revenue
+        FROM sales_order_items i
+        JOIN sales_orders s ON i.sale_id = s.id
+        LEFT JOIN products p ON i.product_id = p.id
+        LEFT JOIN units u ON p.base_unit_id = u.id
+        WHERE date(s.created_at) BETWEEN date(?) AND date(?)
+          AND s.payment_status NOT IN ('Cancelled', 'Refunded')
+        GROUP BY COALESCE(p.id, i.product_id, i.product_name)
+        ORDER BY revenue DESC
+        LIMIT 5
+      `);
+      topProducts = (topStmt.all(startDate, endDate) as Array<any>).map((row) => ({
+        id: String(row.id),
+        name: String(row.name),
+        qty: Number(row.qty || 0),
+        unit: String(row.unit || 'Kg'),
+        revenue: Number(row.revenue || 0),
+      }));
+    } catch (err) {
+      logger.warn('CloudSync', 'Error retrieving top products', err);
+    }
+
+    const netProfit = grossProfit - expensesTotal;
+
+    return {
+      date: startDate === endDate ? startDate : `${startDate} → ${endDate}`,
+      revenue: Number(salesData.revenue || 0),
+      orderCount: Number(salesData.orderCount || 0),
+      grossProfit: Number(grossProfit),
+      cashAmount: Number(salesData.cashAmount || 0),
+      mobileMoneyAmount: Number(salesData.mobileMoneyAmount || 0),
+      creditAmount: Number(salesData.creditAmount || 0),
+      expensesTotal: Number(expensesTotal),
+      netProfit: Number(netProfit),
+      topProducts,
+    };
+  }
+
+  public buildSnapshot(): StoreSyncSnapshot {
+    const biz = this.businessRepo.getActiveBusiness();
+    const storeName = 'متجر علي خليل';
+    const currency = biz?.currency === 'USD' ? 'FCFA' : (biz?.currency || 'FCFA');
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const yesterdayStr = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const weekStartStr = new Date(Date.now() - 6 * 86400000).toISOString().slice(0, 10);
+    const monthStartStr = `${todayStr.slice(0, 8)}01`;
+
+    const todayMetrics = this.buildPeriodMetrics(todayStr, todayStr);
+    const yesterdayMetrics = this.buildPeriodMetrics(yesterdayStr, yesterdayStr);
+    const weekMetrics = this.buildPeriodMetrics(weekStartStr, todayStr);
+    const monthMetrics = this.buildPeriodMetrics(monthStartStr, todayStr);
+
+    // Recent Expenses (Today)
+    let recentExpenses: Array<any> = [];
+    try {
       const expListStmt = this.db.prepare(`
         SELECT id, title, category, amount, payment_method, expense_date
         FROM expenses
@@ -177,8 +256,6 @@ export class CloudSyncService {
     } catch {
       // expenses table might be empty
     }
-
-    const netProfit = grossProfit - expensesTotal;
 
     // 3. Customer Debts / Borrow
     let totalOutstanding = 0;
@@ -292,16 +369,12 @@ export class CloudSyncService {
       storeName,
       timestamp: new Date().toISOString(),
       currency,
-      today: {
-        date: todayStr,
-        revenue: Number(salesData.revenue || 0),
-        orderCount: Number(salesData.orderCount || 0),
-        grossProfit: Number(grossProfit),
-        cashAmount: Number(salesData.cashAmount || 0),
-        mobileMoneyAmount: Number(salesData.mobileMoneyAmount || 0),
-        creditAmount: Number(salesData.creditAmount || 0),
-        expensesTotal: Number(expensesTotal),
-        netProfit: Number(netProfit),
+      today: todayMetrics,
+      periods: {
+        today: todayMetrics,
+        yesterday: yesterdayMetrics,
+        week: weekMetrics,
+        month: monthMetrics,
       },
       debts: {
         totalOutstanding,

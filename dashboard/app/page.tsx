@@ -27,6 +27,7 @@ export default function DashboardPage() {
   const [snapshot, setSnapshot] = useState<StoreSnapshot>(defaultDemoSnapshot);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'debts' | 'stock' | 'sales'>('overview');
+  const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'yesterday' | 'week' | 'month'>('today');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pinInput, setPinInput] = useState('');
   const [pinError, setPinError] = useState(false);
@@ -197,9 +198,24 @@ export default function DashboardPage() {
   }
 
   // ================= MAIN DASHBOARD =================
-  const today = snapshot.today || {};
-  const totalCashAndMomo = (today.cashAmount || 0) + (today.mobileMoneyAmount || 0);
-  const cashPercent = totalCashAndMomo > 0 ? Math.round(((today.cashAmount || 0) / totalCashAndMomo) * 100) : 50;
+  const currentPeriod =
+    (snapshot.periods && snapshot.periods[selectedPeriod]) || snapshot.today || {};
+  const periodLabels: Record<'today' | 'yesterday' | 'week' | 'month', string> = {
+    today: "TODAY'S REVENUE",
+    yesterday: "YESTERDAY'S REVENUE",
+    week: 'LAST 7 DAYS REVENUE',
+    month: "THIS MONTH'S REVENUE",
+  };
+  const expenseLabels: Record<'today' | 'yesterday' | 'week' | 'month', string> = {
+    today: "Today's Expenses",
+    yesterday: "Yesterday's Expenses",
+    week: '7-Day Expenses',
+    month: 'Monthly Expenses',
+  };
+  const totalCashAndMomo = (currentPeriod.cashAmount || 0) + (currentPeriod.mobileMoneyAmount || 0);
+  const cashPercent =
+    totalCashAndMomo > 0 ? Math.round(((currentPeriod.cashAmount || 0) / totalCashAndMomo) * 100) : 50;
+  const topProducts = currentPeriod.topProducts || [];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -243,30 +259,54 @@ export default function DashboardPage() {
         {/* ================= TAB 1: OVERVIEW ================= */}
         {activeTab === 'overview' && (
           <div className="space-y-4">
+            {/* Period Filter Pills */}
+            <div className="grid grid-cols-4 gap-1.5 bg-slate-200/70 p-1 rounded-xl">
+              {(
+                [
+                  { id: 'today', label: 'Today' },
+                  { id: 'yesterday', label: 'Yesterday' },
+                  { id: 'week', label: 'This Week' },
+                  { id: 'month', label: 'This Month' },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setSelectedPeriod(tab.id)}
+                  className={`py-1.5 px-2 rounded-lg text-[11px] font-bold transition-all ${
+                    selectedPeriod === tab.id
+                      ? 'bg-white text-teal-800 shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
             {/* Big Revenue Banner */}
             <div className="rounded-2xl p-5 bg-gradient-to-br from-teal-700 via-teal-800 to-slate-900 text-white shadow-lg shadow-teal-900/20 relative overflow-hidden">
               <div className="absolute top-0 right-0 -mr-6 -mt-6 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
               <div className="flex items-center justify-between text-xs text-teal-200 font-medium mb-1">
-                <span>TODAY'S REVENUE</span>
+                <span>{periodLabels[selectedPeriod]}</span>
                 <span className="px-2 py-0.5 rounded-full bg-teal-600/50 border border-teal-400/30 text-[10px]">
-                  {today.orderCount || 0} Orders
+                  {currentPeriod.orderCount || 0} Orders
                 </span>
               </div>
               <div className="text-3xl font-extrabold tracking-tight">
-                {formatFCFA(today.revenue)}
+                {formatFCFA(currentPeriod.revenue)}
               </div>
 
               <div className="mt-4 pt-3 border-t border-teal-600/40 flex items-center justify-between text-xs">
                 <div>
                   <span className="text-teal-300 block text-[10px]">Gross Profit</span>
                   <span className="font-bold text-emerald-300">
-                    +{formatFCFA(today.grossProfit)}
+                    +{formatFCFA(currentPeriod.grossProfit)}
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-teal-300 block text-[10px]">Net After Expenses</span>
-                  <span className={`font-bold ${today.netProfit >= 0 ? 'text-white' : 'text-rose-300'}`}>
-                    {formatFCFA(today.netProfit)}
+                  <span className={`font-bold ${currentPeriod.netProfit >= 0 ? 'text-white' : 'text-rose-300'}`}>
+                    {formatFCFA(currentPeriod.netProfit)}
                   </span>
                 </div>
               </div>
@@ -277,14 +317,16 @@ export default function DashboardPage() {
               {/* Expenses */}
               <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-                  <span>Today's Expenses</span>
+                  <span>{expenseLabels[selectedPeriod]}</span>
                   <TrendingUp className="w-3.5 h-3.5 text-rose-500" />
                 </div>
                 <div className="text-lg font-bold text-slate-900">
-                  {formatFCFA(today.expensesTotal)}
+                  {formatFCFA(currentPeriod.expensesTotal)}
                 </div>
                 <span className="text-[10px] text-slate-400">
-                  {snapshot.recentExpenses?.length || 0} entries today
+                  {selectedPeriod === 'today'
+                    ? `${snapshot.recentExpenses?.length || 0} entries today`
+                    : currentPeriod.date || ''}
                 </span>
               </div>
 
@@ -308,9 +350,16 @@ export default function DashboardPage() {
 
             {/* Payment Method Breakdown */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
-              <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                Payment Breakdown
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Payment Breakdown
+                </h2>
+                {currentPeriod.creditAmount > 0 && (
+                  <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Credit: {formatFCFA(currentPeriod.creditAmount)}
+                  </span>
+                )}
+              </div>
 
               {/* Visual Progress Bar */}
               <div className="h-3 w-full bg-slate-100 rounded-full overflow-hidden flex">
@@ -332,7 +381,7 @@ export default function DashboardPage() {
                   <div>
                     <span className="text-[11px] text-slate-500 block">Cash ({cashPercent}%)</span>
                     <span className="font-bold text-slate-800">
-                      {formatFCFA(today.cashAmount)}
+                      {formatFCFA(currentPeriod.cashAmount)}
                     </span>
                   </div>
                 </div>
@@ -342,11 +391,58 @@ export default function DashboardPage() {
                   <div>
                     <span className="text-[11px] text-slate-500 block">OM / MOMO ({100 - cashPercent}%)</span>
                     <span className="font-bold text-slate-800">
-                      {formatFCFA(today.mobileMoneyAmount)}
+                      {formatFCFA(currentPeriod.mobileMoneyAmount)}
                     </span>
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Top 5 Best-Selling Items */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                  Top 5 Best-Selling Items
+                </h2>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {selectedPeriod === 'today'
+                    ? 'Today'
+                    : selectedPeriod === 'yesterday'
+                    ? 'Yesterday'
+                    : selectedPeriod === 'week'
+                    ? 'Last 7 Days'
+                    : 'This Month'}
+                </span>
+              </div>
+
+              {topProducts.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-3">
+                  No sales recorded for this period yet.
+                </p>
+              ) : (
+                <div className="divide-y divide-slate-100">
+                  {topProducts.map((item, idx) => (
+                    <div key={item.id || idx} className="py-2 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <span className="w-5 h-5 rounded-full bg-teal-50 text-teal-700 font-bold text-[10px] flex items-center justify-center shrink-0 border border-teal-200">
+                          {idx + 1}
+                        </span>
+                        <div className="truncate">
+                          <span className="font-semibold text-slate-800 block truncate">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {Number(item.qty % 1 !== 0 ? item.qty.toFixed(2) : item.qty)} {item.unit} sold
+                          </span>
+                        </div>
+                      </div>
+                      <span className="font-bold text-slate-900 font-mono shrink-0 ml-2">
+                        {formatFCFA(item.revenue)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Stock Health Banner */}

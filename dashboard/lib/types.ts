@@ -1,17 +1,34 @@
+export interface TopSellingProduct {
+  id: string;
+  name: string;
+  qty: number;
+  unit: string;
+  revenue: number;
+}
+
+export interface PeriodMetrics {
+  date: string;
+  revenue: number;
+  orderCount: number;
+  grossProfit: number;
+  cashAmount: number;
+  mobileMoneyAmount: number;
+  creditAmount: number;
+  expensesTotal: number;
+  netProfit: number;
+  topProducts?: TopSellingProduct[];
+}
+
 export interface StoreSnapshot {
   storeName: string;
   timestamp: string;
   currency: string;
-  today: {
-    date: string;
-    revenue: number;
-    orderCount: number;
-    grossProfit: number;
-    cashAmount: number;
-    mobileMoneyAmount: number;
-    creditAmount: number;
-    expensesTotal: number;
-    netProfit: number;
+  today: PeriodMetrics;
+  periods?: {
+    today: PeriodMetrics;
+    yesterday: PeriodMetrics;
+    week: PeriodMetrics;
+    month: PeriodMetrics;
   };
   debts: {
     totalOutstanding: number;
@@ -58,20 +75,29 @@ export interface StoreSnapshot {
   }>;
 }
 
+const emptyPeriod: PeriodMetrics = {
+  date: new Date().toISOString().slice(0, 10),
+  revenue: 0,
+  orderCount: 0,
+  grossProfit: 0,
+  cashAmount: 0,
+  mobileMoneyAmount: 0,
+  creditAmount: 0,
+  expensesTotal: 0,
+  netProfit: 0,
+  topProducts: [],
+};
+
 export const defaultDemoSnapshot: StoreSnapshot = {
   storeName: 'متجر علي خليل',
   timestamp: '',
   currency: 'FCFA',
-  today: {
-    date: new Date().toISOString().slice(0, 10),
-    revenue: 0,
-    orderCount: 0,
-    grossProfit: 0,
-    cashAmount: 0,
-    mobileMoneyAmount: 0,
-    creditAmount: 0,
-    expensesTotal: 0,
-    netProfit: 0,
+  today: { ...emptyPeriod },
+  periods: {
+    today: { ...emptyPeriod },
+    yesterday: { ...emptyPeriod },
+    week: { ...emptyPeriod },
+    month: { ...emptyPeriod },
   },
   debts: {
     totalOutstanding: 0,

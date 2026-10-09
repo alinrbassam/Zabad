@@ -27,7 +27,7 @@ export const ThermalReceiptModal: React.FC<Props> = ({
 
   if (!isOpen || !sale) return null;
 
-  const defaultStoreName = language === 'ar' ? 'متجر خليل' : 'Khalil Store';
+  const defaultStoreName = language === 'ar' ? 'متجر علي خليل' : 'Ali Khalil Store';
   const defaultAddress = language === 'ar' ? 'السوق المركزي' : 'Central Market';
 
   const storeTitle = businessName || defaultStoreName;
