@@ -185,11 +185,11 @@ export const ExpensesPage: React.FC = () => {
             <div className="p-2 rounded-xl bg-rose-500/20 text-rose-400 border border-rose-500/30">
               <Receipt className="h-6 w-6" />
             </div>
-            <h1 className="text-xl sm:text-2xl font-black">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-slate-100">
               {language === 'ar' ? 'المصاريف التشغيلية للمحل' : 'Store Operational Expenses'}
             </h1>
           </div>
-          <p className="text-xs sm:text-sm text-slate-400">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {language === 'ar'
               ? 'توثيق مصاريف الكهرباء، المياه، قوالب الثلج، النقل، والصيانة لخصمها من صافي الأرباح'
               : 'Log store electricity, water, ice cooling, transport, and maintenance costs for P&L'}
@@ -203,7 +203,7 @@ export const ExpensesPage: React.FC = () => {
               loadSummary();
             }}
             variant="outline"
-            className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            className="border-slate-300 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
             {language === 'ar' ? 'تحديث ⟳' : 'Refresh ⟳'}
           </Button>

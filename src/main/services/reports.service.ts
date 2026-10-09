@@ -219,7 +219,8 @@ export class ReportsService {
       const expStmt = this.db.prepare(`
         SELECT COALESCE(SUM(amount), 0) as totalExpenses
         FROM expenses
-        WHERE date(expense_date) BETWEEN ? AND ?
+        WHERE (deleted_at IS NULL OR deleted_at = '')
+          AND date(expense_date) BETWEEN ? AND ?
       `);
       const expRes = expStmt.get(startDate, endDate) as { totalExpenses: number };
       totalExpenses = expRes?.totalExpenses || 0;

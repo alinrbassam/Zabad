@@ -153,7 +153,8 @@ export class CloudSyncService {
       const expTotalStmt = this.db.prepare(`
         SELECT COALESCE(SUM(amount), 0) as total
         FROM expenses
-        WHERE date(expense_date) = date(?) OR date(created_at) = date(?)
+        WHERE (deleted_at IS NULL OR deleted_at = '')
+          AND (date(expense_date) = date(?) OR date(created_at) = date(?))
       `);
       const expRes = expTotalStmt.get(todayStr, todayStr) as { total: number };
       expensesTotal = expRes?.total || 0;
@@ -161,9 +162,11 @@ export class CloudSyncService {
       const expListStmt = this.db.prepare(`
         SELECT id, title, category, amount, payment_method, expense_date
         FROM expenses
+        WHERE (deleted_at IS NULL OR deleted_at = '')
+          AND (date(expense_date) = date(?) OR date(created_at) = date(?))
         ORDER BY created_at DESC LIMIT 10
       `);
-      recentExpenses = expListStmt.all().map((e: any) => ({
+      recentExpenses = expListStmt.all(todayStr, todayStr).map((e: any) => ({
         id: e.id,
         title: e.title,
         category: e.category,
