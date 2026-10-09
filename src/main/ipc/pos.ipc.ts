@@ -121,6 +121,7 @@ export function registerPOSIpcHandlers(db: Database.Database): void {
       try {
         const parsed = POSRefundSchema.parse(payload);
         const res = posRefundService.processRefund(parsed, userId);
+        cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after refund failed', err));
         SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true, data: res };
       } catch (err) {

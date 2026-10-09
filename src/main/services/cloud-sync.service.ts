@@ -126,7 +126,7 @@ export class CloudSyncService {
         COALESCE(SUM(CASE WHEN payment_method IN ('MOMO', 'OM', 'Orange Money', 'MTN Momo') THEN grand_total ELSE 0 END), 0) as mobileMoneyAmount,
         COALESCE(SUM(CASE WHEN payment_method IN ('Borrow', 'Credit') THEN grand_total ELSE 0 END), 0) as creditAmount
       FROM sales_orders
-      WHERE date(created_at) = date(?) AND payment_status != 'Cancelled'
+      WHERE date(created_at) = date(?) AND payment_status NOT IN ('Cancelled', 'Refunded')
     `);
     const salesData = salesStmt.get(todayStr) as {
       orderCount: number;
@@ -141,7 +141,7 @@ export class CloudSyncService {
       SELECT COALESCE(SUM(i.quantity * i.cost_price), 0) as cogs
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE date(s.created_at) = date(?) AND s.payment_status != 'Cancelled'
+      WHERE date(s.created_at) = date(?) AND s.payment_status NOT IN ('Cancelled', 'Refunded')
     `);
     const cogsData = cogsStmt.get(todayStr) as { cogs: number };
     const grossProfit = Math.max(0, (salesData.revenue || 0) - (cogsData.cogs || 0));
@@ -185,6 +185,7 @@ export class CloudSyncService {
         SELECT id, invoice_number, customer_name, customer_phone, due_date, grand_total, paid_amount, created_at
         FROM sales_orders
         WHERE (payment_status IN ('Unpaid', 'Partially paid') OR payment_method IN ('Borrow', 'Credit'))
+          AND payment_status NOT IN ('Cancelled', 'Refunded')
         ORDER BY created_at DESC
       `);
       const rows = debtStmt.all() as Array<any>;
@@ -269,7 +270,7 @@ export class CloudSyncService {
       const recentSalesStmt = this.db.prepare(`
         SELECT id, invoice_number, grand_total, payment_method, customer_name, created_at
         FROM sales_orders
-        WHERE payment_status != 'Cancelled'
+        WHERE payment_status NOT IN ('Cancelled', 'Refunded')
         ORDER BY created_at DESC LIMIT 15
       `);
       recentSales = recentSalesStmt.all().map((s: any) => ({

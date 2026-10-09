@@ -514,6 +514,16 @@ export class SupabaseSyncService {
                 } else {
                   shouldWrite = false;
                 }
+              } else if (table === 'sales_orders') {
+                if (existing.payment_status === 'Refunded' && row.payment_status !== 'Refunded') {
+                  shouldWrite = false;
+                } else if (row.payment_status === 'Refunded' && existing.payment_status !== 'Refunded') {
+                  shouldWrite = true;
+                } else if (Number(row.paid_amount || 0) > Number(existing.paid_amount || 0)) {
+                  shouldWrite = true;
+                } else {
+                  shouldWrite = false;
+                }
               } else {
                 const incomingTime = new Date(row.updated_at || row.created_at || 0).getTime();
                 const existingTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
