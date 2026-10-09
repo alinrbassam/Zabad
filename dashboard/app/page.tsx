@@ -212,9 +212,11 @@ export default function DashboardPage() {
     week: '7-Day Expenses',
     month: 'Monthly Expenses',
   };
-  const totalCashAndMomo = (currentPeriod.cashAmount || 0) + (currentPeriod.mobileMoneyAmount || 0);
+  const totalCashAndCredit = (currentPeriod.cashAmount || 0) + (currentPeriod.creditAmount || 0);
   const cashPercent =
-    totalCashAndMomo > 0 ? Math.round(((currentPeriod.cashAmount || 0) / totalCashAndMomo) * 100) : 50;
+    totalCashAndCredit > 0
+      ? Math.round(((currentPeriod.cashAmount || 0) / totalCashAndCredit) * 100)
+      : 100;
   const topProducts = currentPeriod.topProducts || [];
 
   return (
@@ -348,17 +350,15 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Payment Method Breakdown */}
+            {/* Payment Method Breakdown (Cash vs Credit/Borrow) */}
             <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
                 <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Payment Breakdown
+                  Sales Breakdown
                 </h2>
-                {currentPeriod.creditAmount > 0 && (
-                  <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                    Credit: {formatFCFA(currentPeriod.creditAmount)}
-                  </span>
-                )}
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                  Cash Only Store
+                </span>
               </div>
 
               {/* Visual Progress Bar */}
@@ -366,12 +366,12 @@ export default function DashboardPage() {
                 <div
                   style={{ width: `${cashPercent}%` }}
                   className="bg-emerald-500 h-full transition-all"
-                  title="Cash"
+                  title="Cash Sales"
                 />
                 <div
                   style={{ width: `${100 - cashPercent}%` }}
-                  className="bg-orange-500 h-full transition-all"
-                  title="Orange Money / MOMO"
+                  className="bg-amber-500 h-full transition-all"
+                  title="Customer Credit / Borrow"
                 />
               </div>
 
@@ -379,7 +379,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block" />
                   <div>
-                    <span className="text-[11px] text-slate-500 block">Cash ({cashPercent}%)</span>
+                    <span className="text-[11px] text-slate-500 block">Cash Sales ({cashPercent}%)</span>
                     <span className="font-bold text-slate-800">
                       {formatFCFA(currentPeriod.cashAmount)}
                     </span>
@@ -387,11 +387,11 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-md bg-orange-500 inline-block" />
+                  <span className="w-3 h-3 rounded-md bg-amber-500 inline-block" />
                   <div>
-                    <span className="text-[11px] text-slate-500 block">OM / MOMO ({100 - cashPercent}%)</span>
+                    <span className="text-[11px] text-slate-500 block">Credit / Borrow ({100 - cashPercent}%)</span>
                     <span className="font-bold text-slate-800">
-                      {formatFCFA(currentPeriod.mobileMoneyAmount)}
+                      {formatFCFA(currentPeriod.creditAmount)}
                     </span>
                   </div>
                 </div>

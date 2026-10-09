@@ -215,15 +215,11 @@ export const DailyClosingReportModal: React.FC<Props> = ({ isOpen, onClose }) =>
           {/* 2. Payment Breakdown */}
           <div className="space-y-1">
             <p className="font-black text-[10px] uppercase text-slate-500">
-              {language === 'ar' ? '2. تفصيل طرق الدفع' : '2. PAYMENT BREAKDOWN'}
+              {language === 'ar' ? '2. تفصيل المبيعات' : '2. SALES BREAKDOWN'}
             </p>
             <div className="flex justify-between">
               <span>{language === 'ar' ? 'مبيعات نقدية (Cash):' : 'Cash Sales:'}</span>
               <span className="font-bold text-emerald-700">{formatCurrency(summary.cashSales)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>{language === 'ar' ? 'موبايل موني (OM / MOMO):' : 'OM / MOMO Sales:'}</span>
-              <span className="font-bold">{formatCurrency(summary.mobileMoneySales)}</span>
             </div>
             <div className="flex justify-between">
               <span>{language === 'ar' ? 'مبيعات آجلة / ديون جديدة:' : 'New Customer Debts:'}</span>
