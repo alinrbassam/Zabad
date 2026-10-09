@@ -10,14 +10,22 @@ import { useExpenseStore } from '../../stores/useExpenseStore';
 import { SearchBox } from '../ui/SearchBox';
 import { Notifications } from './Notifications';
 import { UserProfile } from './UserProfile';
-import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw, ZoomIn, ZoomOut, Cloud } from 'lucide-react';
+import { Sun, Moon, Monitor, Globe, Shield, ShoppingCart, ChevronDown, Check, Wifi, WifiOff, RefreshCw, ZoomIn, ZoomOut, Cloud, Download } from 'lucide-react';
 
 export const TopBar: React.FC = () => {
   const navigate = useNavigate();
   const { theme, setTheme } = useThemeStore();
   const { language, setLanguage, t } = useLanguageStore();
   const { activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
-  const { updateEvent, isInstallingUpdate, installUpdate } = useCommercialStore();
+  const {
+    updateStatus,
+    updateEvent,
+    isInstallingUpdate,
+    checkForUpdates,
+    downloadUpdate,
+    installUpdate,
+    isLoading: isCheckingOrDownloadingUpdate,
+  } = useCommercialStore();
   const { zoom, zoomIn, zoomOut, resetZoom } = useZoomStore();
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLangOpen, setIsLangOpen] = React.useState(false);
@@ -26,6 +34,19 @@ export const TopBar: React.FC = () => {
   const [syncStatusText, setSyncStatusText] = React.useState<string | null>(null);
   const [syncRole, setSyncRole] = React.useState<'store' | 'manager'>('store');
   const langRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const initialTimer = setTimeout(() => {
+      checkForUpdates().catch(() => {});
+    }, 2500);
+    const updateCheckInterval = setInterval(() => {
+      checkForUpdates().catch(() => {});
+    }, 5 * 60 * 1000);
+    return () => {
+      clearTimeout(initialTimer);
+      clearInterval(updateCheckInterval);
+    };
+  }, [checkForUpdates]);
 
   React.useEffect(() => {
     const checkSyncStatus = async () => {
@@ -412,30 +433,55 @@ export const TopBar: React.FC = () => {
           </span>
         </button>
 
-        {/* Ready-to-Install Update Pill */}
-        {updateEvent?.status === 'downloaded' && (
+        {/* Update Notification & Download / Install Pill (Cashier & Manager) */}
+        {updateEvent?.status === 'downloaded' ? (
           <button
+            type="button"
             onClick={() => installUpdate()}
             disabled={isInstallingUpdate}
             className="flex items-center space-x-1.5 rtl:space-x-reverse px-3 py-1.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-all animate-pulse"
             title={
               language === 'ar'
                 ? 'تم تحميل التحديث بنجاح! انقر لإعادة التشغيل وتثبيته الآن'
-                : language === 'fr'
-                ? 'Mise à jour prête ! Cliquez pour redémarrer et appliquer maintenant'
-                : 'Update ready! Click to restart and apply now'
+                : 'Update ready! Click to restart and install now'
             }
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isInstallingUpdate ? 'animate-spin' : ''}`} />
             <span>
               {language === 'ar'
-                ? 'تحديث متوفر (إعادة تشغيل)'
-                : language === 'fr'
-                ? 'Mise à jour prête !'
-                : 'Update Ready !'}
+                ? `تحديث جاهز (v${updateEvent?.version || updateStatus?.latestVersion || ''}) • تثبيت`
+                : `Update Ready (v${updateEvent?.version || updateStatus?.latestVersion || ''}) • Install`}
             </span>
           </button>
-        )}
+        ) : updateEvent?.status === 'downloading' ? (
+          <div className="flex items-center space-x-1.5 rtl:space-x-reverse px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-600 text-white shadow-xs animate-pulse">
+            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            <span>
+              {language === 'ar'
+                ? `جاري التنزيل (${updateEvent?.progress?.percent ?? 0}%)...`
+                : `Downloading (${updateEvent?.progress?.percent ?? 0}%)...`}
+            </span>
+          </div>
+        ) : updateStatus?.hasUpdate || updateEvent?.status === 'available' ? (
+          <button
+            type="button"
+            onClick={() => downloadUpdate()}
+            disabled={isCheckingOrDownloadingUpdate}
+            className="flex items-center space-x-1.5 rtl:space-x-reverse px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition-all"
+            title={
+              language === 'ar'
+                ? 'تم العثور على إصدار جديد! انقر لتنزيل التحديث'
+                : 'New version found! Click to download update'
+            }
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>
+              {language === 'ar'
+                ? `إصدار جديد (v${updateEvent?.version || updateStatus?.latestVersion || ''}) • تنزيل`
+                : `New version found (v${updateEvent?.version || updateStatus?.latestVersion || ''}) • Download`}
+            </span>
+          </button>
+        ) : null}
 
         <Notifications />
         <UserProfile />
