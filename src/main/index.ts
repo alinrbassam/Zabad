@@ -108,10 +108,10 @@ app.whenReady().then(() => {
       dialog
         .showMessageBox({
           type: 'info',
-          title: 'Mise à jour prête / Update Ready',
-          message: `Une nouvelle version (${info.version}) de Zabad POS a été téléchargée avec succès.`,
-          detail: 'Voulez-vous redémarrer l’application maintenant pour appliquer la mise à jour ?',
-          buttons: ['Redémarrer maintenant', 'Plus tard'],
+          title: 'Update Ready',
+          message: `A new version (v${info.version}) of Khalil POS has been downloaded successfully.`,
+          detail: 'Would you like to restart the application now to apply the update?',
+          buttons: ['Restart & Install', 'Later'],
           defaultId: 0,
           cancelId: 1,
         })
@@ -126,7 +126,7 @@ app.whenReady().then(() => {
       logger.warn('AutoUpdater', 'Check for updates failed or errored', err);
       mainWindow.webContents.send(IPC_CHANNELS.UPDATER_STATUS_EVENT, {
         status: 'error',
-        error: err?.message || 'Erreur lors de la vérification de mise à jour',
+        error: err?.message || 'Error checking for updates',
       });
     });
 
