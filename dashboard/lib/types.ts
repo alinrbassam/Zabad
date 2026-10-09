@@ -59,7 +59,7 @@ export interface StoreSnapshot {
 }
 
 export const defaultDemoSnapshot: StoreSnapshot = {
-  storeName: 'Khalil Store',
+  storeName: 'متجر علي خليل',
   timestamp: '',
   currency: 'FCFA',
   today: {

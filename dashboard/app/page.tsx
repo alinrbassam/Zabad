@@ -123,7 +123,7 @@ export default function DashboardPage() {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-teal-500/20 border border-teal-500/40 flex items-center justify-center">
             <Lock className="w-8 h-8 text-teal-400" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight">Zabad Seafood</h1>
+          <h1 className="text-2xl font-bold tracking-tight">متجر علي خليل</h1>
           <p className="text-sm text-slate-400 mt-1">Owner Mobile Portal</p>
         </div>
 
@@ -190,7 +190,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="text-[11px] text-slate-500 text-center">
-          Secured for Zabad Seafood Management
+          Secured for متجر علي خليل Management
         </div>
       </div>
     );
@@ -209,7 +209,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             <h1 className="text-base font-bold text-slate-900 leading-tight">
-              {snapshot.storeName || 'Zabad Seafood'}
+              متجر علي خليل
             </h1>
           </div>
           <p className="text-[11px] text-slate-500">

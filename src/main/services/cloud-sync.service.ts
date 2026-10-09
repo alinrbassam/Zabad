@@ -113,7 +113,7 @@ export class CloudSyncService {
 
   public buildSnapshot(): StoreSyncSnapshot {
     const biz = this.businessRepo.getActiveBusiness();
-    const storeName = biz?.name || 'Zabad Seafood';
+    const storeName = 'متجر علي خليل';
     const currency = biz?.currency === 'USD' ? 'FCFA' : (biz?.currency || 'FCFA');
     const todayStr = new Date().toISOString().slice(0, 10);
 

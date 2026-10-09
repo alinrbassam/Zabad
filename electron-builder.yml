@@ -25,6 +25,7 @@ win:
         - x64
 
 nsis:
+  artifactName: "Khalil-POS-Setup-${version}.${ext}"
   oneClick: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
