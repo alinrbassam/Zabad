@@ -243,8 +243,8 @@ export class POSSalesService {
     const params: string[] = [];
 
     if (query) {
-      sql += ' AND invoice_number LIKE ?';
-      params.push(`%${query}%`);
+      sql += ' AND (invoice_number LIKE ? OR customer_name LIKE ?)';
+      params.push(`%${query}%`, `%${query}%`);
     }
 
     sql += ' ORDER BY created_at DESC LIMIT 100';

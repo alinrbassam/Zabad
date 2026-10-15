@@ -26,6 +26,7 @@ import {
   Tag,
   Package,
   FileText,
+  User,
 } from 'lucide-react';
 
 export const POSTerminalPage: React.FC = () => {
@@ -51,6 +52,7 @@ export const POSTerminalPage: React.FC = () => {
 
   const [productSearch, setProductSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [customerName, setCustomerName] = useState('');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showHoldModal, setShowHoldModal] = useState(false);
   const [showHoldSaveModal, setShowHoldSaveModal] = useState(false);
@@ -212,6 +214,7 @@ export const POSTerminalPage: React.FC = () => {
     const sale = await checkout(payments, user?.id, borrowDetails);
     if (sale) {
       setShowPaymentModal(false);
+      setCustomerName('');
       setLastCompletedSale(sale);
     } else {
       const err = usePOSStore.getState().error;
@@ -405,13 +408,44 @@ export const POSTerminalPage: React.FC = () => {
           </div>
           {cart.length > 0 && (
             <button
-              onClick={clearCart}
+              onClick={() => {
+                clearCart();
+                setCustomerName('');
+              }}
               className="text-xs text-rose-600 hover:text-rose-700 font-semibold flex items-center space-x-1"
             >
               <RotateCcw className="h-3 w-3" />
               <span>{language === 'ar' ? 'مسح' : 'Clear'}</span>
             </button>
           )}
+        </div>
+
+        {/* Customer Name Input (Receipt Customer) */}
+        <div className="px-3 py-2 border-b border-slate-200 bg-white">
+          <div className="relative flex items-center">
+            <User className="absolute left-2.5 rtl:left-auto rtl:right-2.5 h-3.5 w-3.5 text-slate-400 pointer-events-none" />
+            <input
+              type="text"
+              value={customerName}
+              onChange={(e) => setCustomerName(e.target.value)}
+              placeholder={
+                language === 'ar'
+                  ? 'اسم العميل ليظهر على الفاتورة (اختياري)...'
+                  : 'Customer name on receipt (optional)...'
+              }
+              className="w-full pl-8 rtl:pl-7 rtl:pr-8 pr-7 py-1.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-sky-500 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all font-medium"
+            />
+            {customerName && (
+              <button
+                type="button"
+                onClick={() => setCustomerName('')}
+                className="absolute right-2 rtl:right-auto rtl:left-2 p-0.5 text-slate-400 hover:text-slate-600 rounded-md text-xs font-bold"
+                title={language === 'ar' ? 'مسح الاسم' : 'Clear name'}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Cart Line Items */}
@@ -600,6 +634,7 @@ export const POSTerminalPage: React.FC = () => {
         isOpen={showPaymentModal}
         onClose={() => setShowPaymentModal(false)}
         grandTotal={totals.grandTotal}
+        initialCustomerName={customerName}
         onConfirm={handlePaymentConfirm}
       />
 

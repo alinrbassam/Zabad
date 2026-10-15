@@ -77,9 +77,13 @@ export const ThermalReceiptModal: React.FC<Props> = ({
               <span className="font-semibold">{sale.payment_method || 'Cash'}</span>
             </div>
             {sale.customer_name && (
-              <div className="flex justify-between font-bold text-amber-950 bg-amber-100/70 p-1 rounded">
-                <span>{language === 'ar' ? 'العميل / المستدين:' : 'Borrower / Customer:'}</span>
-                <span>{sale.customer_name}</span>
+              <div className="flex justify-between font-bold text-slate-900 bg-slate-100 p-1 rounded border border-slate-200">
+                <span>
+                  {sale.payment_status === 'Paid'
+                    ? (language === 'ar' ? 'العميل:' : 'Customer:')
+                    : (language === 'ar' ? 'العميل / المستدين:' : 'Borrower / Customer:')}
+                </span>
+                <span className="font-black">{sale.customer_name}</span>
               </div>
             )}
             {sale.payment_status && sale.payment_status !== 'Paid' && (

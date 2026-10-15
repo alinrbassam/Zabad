@@ -18,6 +18,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   grandTotal: number;
+  initialCustomerName?: string;
   onConfirm: (
     payments: {
       paymentMethod: 'Cash' | 'Card' | 'Digital Wallet' | 'Store Credit' | 'Borrow' | 'Credit' | string;
@@ -34,15 +35,22 @@ interface Props {
   ) => void;
 }
 
-export const POSPaymentModal: React.FC<Props> = ({ isOpen, onClose, grandTotal, onConfirm }) => {
+export const POSPaymentModal: React.FC<Props> = ({
+  isOpen,
+  onClose,
+  grandTotal,
+  initialCustomerName = '',
+  onConfirm,
+}) => {
   const { language } = useLanguageStore();
   const [activeTab, setActiveTab] = useState<'cash' | 'borrow'>('cash');
 
   // Cash state
   const [cashTendered, setCashTendered] = useState<string>(Math.round(grandTotal).toString());
+  const [cashCustomerName, setCashCustomerName] = useState(initialCustomerName);
 
   // Borrow / Credit state
-  const [borrowerName, setBorrowerName] = useState('');
+  const [borrowerName, setBorrowerName] = useState(initialCustomerName);
   const [borrowerPhone, setBorrowerPhone] = useState('');
   const [downPayment, setDownPayment] = useState<string>('0');
   const [dueDate, setDueDate] = useState<string>('');
@@ -53,14 +61,15 @@ export const POSPaymentModal: React.FC<Props> = ({ isOpen, onClose, grandTotal, 
     if (isOpen) {
       setActiveTab('cash');
       setCashTendered(Math.round(grandTotal).toString());
-      setBorrowerName('');
+      setCashCustomerName(initialCustomerName || '');
+      setBorrowerName(initialCustomerName || '');
       setBorrowerPhone('');
       setDownPayment('0');
       setDueDate('');
       setNotes('');
       setValidationError(null);
     }
-  }, [isOpen, grandTotal]);
+  }, [isOpen, grandTotal, initialCustomerName]);
 
   // Keyboard shortcut to confirm on Enter or close on Escape
   useEffect(() => {
@@ -87,7 +96,12 @@ export const POSPaymentModal: React.FC<Props> = ({ isOpen, onClose, grandTotal, 
 
   const handlePayCash = () => {
     if (parsedTendered < grandTotal) return;
-    onConfirm([{ paymentMethod: 'Cash', amount: grandTotal }], parsedTendered);
+    const trimmed = cashCustomerName.trim();
+    onConfirm(
+      [{ paymentMethod: 'Cash', amount: grandTotal }],
+      parsedTendered,
+      trimmed ? { customerName: trimmed } : undefined,
+    );
   };
 
   const handleConfirmBorrow = () => {
@@ -224,6 +238,30 @@ export const POSPaymentModal: React.FC<Props> = ({ isOpen, onClose, grandTotal, 
         {/* CASH PAYMENT TAB */}
         {activeTab === 'cash' && (
           <div className="space-y-3.5 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+            {/* Customer Name Input */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                {language === 'ar' ? 'اسم العميل / الزبون (اختياري):' : 'Customer Name (optional):'}
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 rtl:left-auto rtl:right-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  type="text"
+                  value={cashCustomerName}
+                  onChange={(e) => {
+                    setCashCustomerName(e.target.value);
+                    setBorrowerName(e.target.value);
+                  }}
+                  placeholder={
+                    language === 'ar'
+                      ? 'اسم العميل ليظهر على الفاتورة (مثال: أبو علي)...'
+                      : 'Customer name to appear on receipt...'
+                  }
+                  className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-xs"
+                />
+              </div>
+            </div>
+
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 {language === 'ar' ? 'المبلغ المستلم من العميل (FCFA):' : 'Cash Received from Customer (FCFA):'}
