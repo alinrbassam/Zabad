@@ -24,6 +24,7 @@ export const ProductFormPage: React.FC = () => {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
   } = useForm<ProductInput>({
     resolver: zodResolver(ProductSchema),
@@ -50,8 +51,13 @@ export const ProductFormPage: React.FC = () => {
       trackExpiry: false,
       isActive: true,
       openingStockQty: 0,
+      pieceWeight: 0,
+      piecesPerPack: 1,
     },
   });
+
+  const watchPieceWeight = watch('pieceWeight') || 0;
+  const watchPiecesPerPack = watch('piecesPerPack') || 1;
 
   useEffect(() => {
     loadMetadata();
@@ -78,6 +84,8 @@ export const ProductFormPage: React.FC = () => {
           setValue('trackInventory', p.track_inventory === 1);
           setValue('reorderLevel', p.reorder_level ?? 100);
           setValue('openingStockQty', p.quantity_on_hand ?? 0);
+          setValue('pieceWeight', p.piece_weight ?? 0);
+          setValue('piecesPerPack', p.pieces_per_pack ?? 1);
         }
       });
     }
@@ -211,6 +219,49 @@ export const ProductFormPage: React.FC = () => {
               helperText="Turns RED when stock falls below this quantity"
             />
           </div>
+        </Card>
+
+        {/* Section 5: Weight & Packaging Helper (Optional) */}
+        <Card title="5. Weight & Packaging Helper (Optional / اختياري)">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+            Fill this if the product has a weight (e.g. tile pack, chair, carton) so weights are automatically calculated and printed on customer receipts. Leave as 0 if this item does not have a weight.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Input
+              label="Weight per Piece (kg) / وزن القطعة (كغ)"
+              type="number"
+              step="any"
+              min="0"
+              placeholder="e.g. 0.25 for tile, 1.0 for chair"
+              {...register('pieceWeight', { valueAsNumber: true })}
+              helperText="Weight of a single unit/piece in kg"
+            />
+            <Input
+              label="Pieces per Pack / عدد القطع بالكرتونة"
+              type="number"
+              step="1"
+              min="1"
+              placeholder="e.g. 12 or 10 (or 1 for single chair)"
+              {...register('piecesPerPack', { valueAsNumber: true })}
+              helperText="Number of pieces inside 1 pack (default: 1)"
+            />
+          </div>
+
+          {watchPieceWeight > 0 && (
+            <div className="mt-3 p-3 bg-sky-50 dark:bg-sky-950/40 border border-sky-200 dark:border-sky-800 rounded-xl flex items-center justify-between text-xs">
+              <span className="font-semibold text-sky-800 dark:text-sky-300">
+                ⚖️ Auto-Calculated Pack Weight:
+              </span>
+              <span className="font-mono font-bold text-sky-700 dark:text-sky-200 text-sm">
+                {(watchPieceWeight * (watchPiecesPerPack || 1)).toFixed(2)} kg / pack
+                {watchPiecesPerPack > 1 && (
+                  <span className="text-xs font-normal text-sky-600 dark:text-sky-400 ml-2">
+                    ({watchPiecesPerPack} pcs × {watchPieceWeight} kg)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
         </Card>
 
         <div className="flex justify-between items-center pt-2">

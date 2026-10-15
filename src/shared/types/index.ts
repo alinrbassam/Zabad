@@ -200,6 +200,8 @@ export interface ProductEntity extends BaseEntity {
   is_featured: number;
   quantity_on_hand?: number;
   unit_symbol?: string;
+  piece_weight?: number;
+  pieces_per_pack?: number;
   created_by?: string;
   updated_by?: string;
   archived_at?: string | null;
@@ -430,6 +432,11 @@ export interface SalesOrderItemEntity {
   tax_rate: number;
   tax_amount: number;
   line_total: number;
+  selling_mode?: 'pack' | 'piece' | string;
+  piece_weight?: number;
+  pieces_per_pack?: number;
+  unit_weight?: number;
+  total_weight?: number;
 }
 
 export interface SalesPaymentEntity {

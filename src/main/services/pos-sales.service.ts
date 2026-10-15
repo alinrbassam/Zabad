@@ -97,8 +97,9 @@ export class POSSalesService {
     const insertItem = this.db.prepare(`
       INSERT INTO sales_order_items (
         id, sale_id, product_id, batch_id, unit_id, quantity, unit_price,
-        cost_price, discount, tax_rate, tax_amount, line_total
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        cost_price, discount, tax_rate, tax_amount, line_total,
+        selling_mode, piece_weight, pieces_per_pack, unit_weight, total_weight
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const insertPayment = this.db.prepare(`
@@ -177,6 +178,16 @@ export class POSSalesService {
           if (b) selectedBatchId = b.id;
         }
 
+        const itemSellingMode = item.sellingMode || 'pack';
+        const itemPieceWeight = item.pieceWeight !== undefined ? item.pieceWeight : (product?.piece_weight || 0);
+        const itemPiecesPerPack = item.piecesPerPack !== undefined ? item.piecesPerPack : (product?.pieces_per_pack || 1);
+        const itemUnitWeight = item.unitWeight !== undefined
+          ? item.unitWeight
+          : (itemSellingMode === 'piece' ? itemPieceWeight : (itemPiecesPerPack * itemPieceWeight));
+        const itemTotalWeight = item.totalWeight !== undefined
+          ? item.totalWeight
+          : (item.quantity * itemUnitWeight);
+
         insertItem.run(
           crypto.randomUUID(),
           saleId,
@@ -190,6 +201,11 @@ export class POSSalesService {
           item.taxRate,
           item.taxAmount,
           item.lineTotal,
+          itemSellingMode,
+          itemPieceWeight,
+          itemPiecesPerPack,
+          itemUnitWeight,
+          itemTotalWeight,
         );
 
         this.inventoryService.createAdjustment(

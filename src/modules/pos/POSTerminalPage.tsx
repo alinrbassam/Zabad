@@ -179,6 +179,7 @@ export const POSTerminalPage: React.FC = () => {
   const calculateTotals = () => {
     let subtotal = 0;
     let taxTotal = 0;
+    let totalWeight = 0;
 
     cart.forEach((item) => {
       const lineSub = Math.round(item.quantity * item.unitPrice * 100) / 100;
@@ -188,10 +189,19 @@ export const POSTerminalPage: React.FC = () => {
 
       subtotal += lineSub;
       taxTotal += tax;
+
+      const pcWeight = item.product.piece_weight || 0;
+      if (pcWeight > 0) {
+        const isPiece = item.sellingMode === 'piece';
+        const pcsPerPack = item.product.pieces_per_pack || 1;
+        const unitWeight = isPiece ? pcWeight : (pcsPerPack * pcWeight);
+        totalWeight += item.quantity * unitWeight;
+      }
     });
 
+    totalWeight = Math.round(totalWeight * 1000) / 1000;
     const grandTotal = Math.round((subtotal - orderDiscount + taxTotal) * 100) / 100;
-    return { subtotal, taxTotal, grandTotal };
+    return { subtotal, taxTotal, grandTotal, totalWeight };
   };
 
   const totals = calculateTotals();
@@ -364,15 +374,24 @@ export const POSTerminalPage: React.FC = () => {
                       <div className="rounded-xl bg-sky-50 p-2 text-sky-600 group-hover:bg-sky-600 group-hover:text-white transition-all shadow-xs">
                         {isFish ? <Fish className="h-4 w-4" /> : <Tag className="h-4 w-4" />}
                       </div>
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-semibold font-mono">
-                        {p.base_unit_id === 'Kg'
-                          ? language === 'ar'
-                            ? 'بالكيلو'
-                            : '/Kg'
-                          : language === 'ar'
-                          ? 'بالقطعة'
-                          : '/Pc'}
-                      </span>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 font-semibold font-mono">
+                          {p.base_unit_id === 'Kg'
+                            ? language === 'ar'
+                              ? 'بالكيلو'
+                              : '/Kg'
+                            : language === 'ar'
+                            ? 'بالقطعة'
+                            : '/Pc'}
+                        </span>
+                        {Boolean(p.piece_weight && p.piece_weight > 0) && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-sky-50 border border-sky-200 text-sky-700 font-bold font-mono">
+                            ⚖️ {(p.pieces_per_pack && p.pieces_per_pack > 1)
+                              ? `${(p.piece_weight! * p.pieces_per_pack).toFixed(2)}kg/pk`
+                              : `${p.piece_weight}kg`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <h4 className="text-xs font-bold text-slate-900 group-hover:text-sky-600 leading-snug">
                       {language === 'ar' ? p.name_ar || p.name_en : p.name_en}
@@ -452,6 +471,14 @@ export const POSTerminalPage: React.FC = () => {
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {cart.map((item, idx) => {
             const lineSub = item.quantity * item.unitPrice - item.discount;
+            const pcWeight = item.product.piece_weight || 0;
+            const pcsPerPack = item.product.pieces_per_pack || 1;
+            const hasWeight = pcWeight > 0;
+            const hasPackOptions = hasWeight && pcsPerPack > 1;
+            const isPieceMode = item.sellingMode === 'piece';
+            const unitWeight = isPieceMode ? pcWeight : (pcsPerPack * pcWeight);
+            const lineTotalWeight = hasWeight ? Math.round(item.quantity * unitWeight * 1000) / 1000 : 0;
+
             return (
               <div
                 key={idx}
@@ -465,6 +492,60 @@ export const POSTerminalPage: React.FC = () => {
                     {formatCurrency(lineSub)}
                   </span>
                 </div>
+
+                {/* Packaging & Weight Indicator / Mode Selector */}
+                {hasWeight && (
+                  <div className="flex items-center justify-between gap-1 bg-white/90 p-1.5 rounded-xl border border-slate-200">
+                    {hasPackOptions ? (
+                      <div className="inline-flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (isPieceMode) {
+                              updateCartItem(idx, 'sellingMode', 'pack');
+                              if (item.unitPrice === Math.round(((item.product.selling_price || 0) / pcsPerPack) * 100) / 100) {
+                                updateCartItem(idx, 'unitPrice', item.product.selling_price || 0);
+                              }
+                            }
+                          }}
+                          className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition-all ${
+                            !isPieceMode
+                              ? 'bg-sky-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {language === 'ar' ? `كرتونة (${pcsPerPack} حبة)` : `Pack (${pcsPerPack} pcs)`}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!isPieceMode) {
+                              updateCartItem(idx, 'sellingMode', 'piece');
+                              if (item.unitPrice === (item.product.selling_price || 0)) {
+                                updateCartItem(idx, 'unitPrice', Math.round(((item.product.selling_price || 0) / pcsPerPack) * 100) / 100);
+                              }
+                            }
+                          }}
+                          className={`px-2 py-0.5 rounded-md font-bold text-[10px] transition-all ${
+                            isPieceMode
+                              ? 'bg-sky-600 text-white shadow-xs'
+                              : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        >
+                          {language === 'ar' ? 'بالحبة' : 'Piece'}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-semibold px-1">
+                        {language === 'ar' ? `قطعة (${pcWeight} كجم)` : `Single (${pcWeight} kg/pc)`}
+                      </span>
+                    )}
+
+                    <span className="font-mono font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200 text-[11px] whitespace-nowrap">
+                      ⚖️ {lineTotalWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}
+                    </span>
+                  </div>
+                )}
 
                 {/* Weight & Quantity Controls */}
                 <div className="flex items-center justify-between gap-1 pt-1">
@@ -493,7 +574,13 @@ export const POSTerminalPage: React.FC = () => {
                         className="w-11 text-center bg-transparent font-bold font-mono focus:outline-none text-slate-900 text-[11px]"
                       />
                       <span className="text-[9px] text-slate-500 font-semibold pr-0.5 rtl:pr-0 rtl:pl-0.5">
-                        {item.product.base_unit_id === 'Kg' ? (language === 'ar' ? 'كجم' : 'Kg') : (language === 'ar' ? 'قطعة' : 'Pc')}
+                        {hasPackOptions
+                          ? !isPieceMode
+                            ? language === 'ar' ? 'كرتون' : 'Pk'
+                            : language === 'ar' ? 'حبة' : 'Pc'
+                          : item.product.base_unit_id === 'Kg'
+                          ? language === 'ar' ? 'كجم' : 'Kg'
+                          : language === 'ar' ? 'قطعة' : 'Pc'}
                       </span>
                     </div>
                     <button
@@ -576,6 +663,19 @@ export const POSTerminalPage: React.FC = () => {
               <span>{language === 'ar' ? 'المجموع الفرعي:' : 'Subtotal:'}</span>
               <span className="font-mono font-bold text-slate-800">{formatCurrency(totals.subtotal)}</span>
             </div>
+
+            {totals.totalWeight > 0 && (
+              <div className="flex justify-between items-center text-slate-700 bg-sky-50/80 px-2.5 py-1.5 rounded-xl border border-sky-200">
+                <span className="flex items-center gap-1.5 font-bold text-sky-800">
+                  <span>⚖️</span>
+                  <span>{language === 'ar' ? 'إجمالي وزن الطلب:' : 'Total Est. Weight:'}</span>
+                </span>
+                <span className="font-mono font-black text-sky-900 text-xs">
+                  {totals.totalWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}
+                </span>
+              </div>
+            )}
+
             <div className="flex justify-between items-center text-slate-500">
               <span>{language === 'ar' ? 'خصم الفاتورة (FCFA):' : 'Order Discount (FCFA):'}</span>
               <div className="flex items-center space-x-1">

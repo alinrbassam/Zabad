@@ -109,14 +109,58 @@ export const ThermalReceiptModal: React.FC<Props> = ({
                   : (item.name_en || item.name_ar || item.product_id);
                 const unitLabel = item.unit_name_ar || item.unit_symbol || item.unit_code || (language === 'ar' ? 'كغ' : 'kg');
 
+                const pcWeight = Number(item.piece_weight) || 0;
+                const pcsPerPack = Number(item.pieces_per_pack) || 1;
+                const isPieceMode = item.selling_mode === 'piece';
+                const hasWeight = pcWeight > 0 || (Number(item.total_weight) || 0) > 0;
+                const hasPack = pcsPerPack > 1;
+
+                let qtyDisplay = `${item.quantity} ${unitLabel}`;
+                if (hasPack) {
+                  if (isPieceMode) {
+                    qtyDisplay = `${item.quantity} ${language === 'ar' ? 'حبة' : 'pcs'}`;
+                  } else {
+                    qtyDisplay = `${item.quantity} ${language === 'ar' ? 'كرتون' : 'packs'}`;
+                  }
+                }
+
+                const itemTotalWeight = Number(item.total_weight) || (
+                  hasWeight
+                    ? (isPieceMode ? item.quantity * pcWeight : item.quantity * pcsPerPack * pcWeight)
+                    : 0
+                );
+
                 return (
-                  <div key={idx} className="flex justify-between items-center text-[11px] py-1 border-b border-dashed border-slate-100">
-                    <div className="font-bold pr-2 rtl:pr-0 rtl:pl-2">
-                      <p>{itemName}</p>
+                  <div key={idx} className="py-1 border-b border-dashed border-slate-100">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <div className="font-bold pr-2 rtl:pr-0 rtl:pl-2">
+                        <p>
+                          {itemName}
+                          {hasPack && (
+                            <span className="text-[9px] font-normal text-slate-500 mx-1">
+                              ({isPieceMode ? (language === 'ar' ? 'بالحبة' : 'piece') : (language === 'ar' ? 'كرتون' : 'pack')})
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      <span className="font-extrabold font-mono text-[12px] whitespace-nowrap">
+                        {qtyDisplay}
+                      </span>
                     </div>
-                    <span className="font-extrabold font-mono text-[12px] whitespace-nowrap">
-                      {item.quantity} {unitLabel}
-                    </span>
+                    {hasWeight && itemTotalWeight > 0 && (
+                      <div className="text-[10px] text-slate-600 font-mono flex items-center justify-between pt-0.5 px-0.5">
+                        <span>
+                          {hasPack
+                            ? !isPieceMode
+                              ? `${item.quantity} × (${pcsPerPack} × ${pcWeight.toFixed(2)}kg)`
+                              : `${item.quantity} × ${pcWeight.toFixed(2)}kg`
+                            : `${pcWeight.toFixed(2)}kg/${language === 'ar' ? 'قطعة' : 'pc'}`}
+                        </span>
+                        <span className="font-bold text-slate-900">
+                          ⚖️ {itemTotalWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })
@@ -130,36 +174,50 @@ export const ThermalReceiptModal: React.FC<Props> = ({
           <div className="border-b border-dashed border-slate-800 my-1.5" />
 
           {/* Items Summary (Item Count & Total Units) */}
-          <div className="space-y-1 text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
-            <div className="flex justify-between font-bold">
-              <span>{language === 'ar' ? 'إجمالي عدد الأصناف:' : 'Total Item Types:'}</span>
-              <span className="font-mono">{sale.items ? sale.items.length : 0}</span>
-            </div>
-            <div className="flex justify-between font-bold">
-              <span>{language === 'ar' ? 'إجمالي الكميات والوزن:' : 'Total Quantity / Weight:'}</span>
-              <span className="font-mono">
-                {sale.items
-                  ? sale.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
-                  : 0}
-              </span>
-            </div>
-            {sale.order_discount !== undefined && sale.order_discount > 0 && (
-              <div className="flex justify-between text-slate-700 pt-1 border-t border-slate-200">
-                <span>{language === 'ar' ? 'خصم الفاتورة:' : 'Order Discount:'}</span>
-                <span className="font-mono text-amber-800">-{formatCurrency(sale.order_discount)}</span>
+          {(() => {
+            const totalOrderWeight = sale.items
+              ? sale.items.reduce((sum: number, it: any) => sum + (Number(it.total_weight) || 0), 0)
+              : 0;
+
+            return (
+              <div className="space-y-1 text-[10px] bg-slate-50 p-2 rounded border border-slate-200">
+                <div className="flex justify-between font-bold">
+                  <span>{language === 'ar' ? 'إجمالي عدد الأصناف:' : 'Total Item Types:'}</span>
+                  <span className="font-mono">{sale.items ? sale.items.length : 0}</span>
+                </div>
+                <div className="flex justify-between font-bold">
+                  <span>{language === 'ar' ? 'إجمالي الكميات:' : 'Total Units:'}</span>
+                  <span className="font-mono">
+                    {sale.items
+                      ? sale.items.reduce((sum: number, it: any) => sum + (Number(it.quantity) || 0), 0)
+                      : 0}
+                  </span>
+                </div>
+                {totalOrderWeight > 0 && (
+                  <div className="flex justify-between font-black text-slate-900 bg-sky-50/90 p-1.5 rounded border border-sky-200">
+                    <span>{language === 'ar' ? '⚖️ إجمالي الوزن الفعلي:' : '⚖️ Total Order Weight:'}</span>
+                    <span className="font-mono font-black">{totalOrderWeight.toFixed(2)} {language === 'ar' ? 'كجم' : 'kg'}</span>
+                  </div>
+                )}
+                {sale.order_discount !== undefined && sale.order_discount > 0 && (
+                  <div className="flex justify-between text-slate-700 pt-1 border-t border-slate-200">
+                    <span>{language === 'ar' ? 'خصم الفاتورة:' : 'Order Discount:'}</span>
+                    <span className="font-mono text-amber-800">-{formatCurrency(sale.order_discount)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-black text-[12px] pt-1 border-t border-slate-300">
+                  <span>{language === 'ar' ? 'المبلغ الإجمالي المطلوب:' : 'Grand Total:'}</span>
+                  <span className="font-mono">{formatCurrency(sale.grand_total)}</span>
+                </div>
+                {sale.paid_amount !== undefined && sale.paid_amount < sale.grand_total && (
+                  <div className="flex justify-between font-black text-rose-700 pt-0.5">
+                    <span>{language === 'ar' ? 'المتبقي في الذمة (دين):' : 'Remaining Debt:'}</span>
+                    <span className="font-mono">{formatCurrency(Math.max(0, sale.grand_total - (sale.paid_amount || 0)))}</span>
+                  </div>
+                )}
               </div>
-            )}
-            <div className="flex justify-between font-black text-[12px] pt-1 border-t border-slate-300">
-              <span>{language === 'ar' ? 'المبلغ الإجمالي المطلوب:' : 'Grand Total:'}</span>
-              <span className="font-mono">{formatCurrency(sale.grand_total)}</span>
-            </div>
-            {sale.paid_amount !== undefined && sale.paid_amount < sale.grand_total && (
-              <div className="flex justify-between font-black text-rose-700 pt-0.5">
-                <span>{language === 'ar' ? 'المتبقي في الذمة (دين):' : 'Remaining Debt:'}</span>
-                <span className="font-mono">{formatCurrency(Math.max(0, sale.grand_total - (sale.paid_amount || 0)))}</span>
-              </div>
-            )}
-          </div>
+            );
+          })()}
 
           <div className="border-b border-dashed border-slate-800 my-1.5" />
 

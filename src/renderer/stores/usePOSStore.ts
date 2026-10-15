@@ -10,6 +10,7 @@ export interface CartItem {
   unitPrice: number;
   discount: number;
   taxRate: number;
+  sellingMode?: 'pack' | 'piece';
 }
 
 interface POSState {
@@ -88,6 +89,7 @@ export const usePOSStore = create<POSState>((set, get) => ({
         unitPrice: product.selling_price || 0,
         discount: 0,
         taxRate: product.is_tax_exempt ? 0 : product.tax_rate || 0,
+        sellingMode: 'pack',
       };
       set({ cart: [...get().cart, newItem] });
     }
@@ -122,15 +124,28 @@ export const usePOSStore = create<POSState>((set, get) => ({
           notes: customerDetails?.notes || get().notes || undefined,
           orderDiscount: get().orderDiscount,
           amountTendered: get().amountTendered,
-          items: get().cart.map((item) => ({
-            productId: item.product.id,
-            batchId: item.batchId,
-            unitId: item.unitId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            discount: item.discount,
-            taxRate: item.taxRate,
-          })),
+          items: get().cart.map((item) => {
+            const isPiece = item.sellingMode === 'piece';
+            const pcsPerPack = item.product.pieces_per_pack || 1;
+            const pcWeight = item.product.piece_weight || 0;
+            const unitWeight = isPiece ? pcWeight : (pcsPerPack * pcWeight);
+            const totalWeight = item.quantity * unitWeight;
+
+            return {
+              productId: item.product.id,
+              batchId: item.batchId,
+              unitId: item.unitId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              discount: item.discount,
+              taxRate: item.taxRate,
+              sellingMode: item.sellingMode || 'pack',
+              pieceWeight: pcWeight,
+              piecesPerPack: pcsPerPack,
+              unitWeight,
+              totalWeight,
+            };
+          }),
           payments: payments as POSCheckoutInput['payments'],
         };
 

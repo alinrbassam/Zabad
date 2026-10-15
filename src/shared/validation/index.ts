@@ -238,6 +238,8 @@ export const RawProductSchema = z.object({
   preferredReceiptName: z.string().optional(),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
+  pieceWeight: z.number().min(0).default(0).optional(),
+  piecesPerPack: z.number().int().min(1).default(1).optional(),
 
   // Initial Stock (Opening Stock)
   openingStockQty: z.number().min(0).optional(),
@@ -360,6 +362,11 @@ export const POSCartItemSchema = z.object({
   unitPrice: z.number().min(0, 'Price cannot be negative'),
   discount: z.number().min(0).default(0),
   taxRate: z.number().min(0).default(0),
+  sellingMode: z.enum(['pack', 'piece']).optional(),
+  pieceWeight: z.number().optional(),
+  piecesPerPack: z.number().optional(),
+  unitWeight: z.number().optional(),
+  totalWeight: z.number().optional(),
 });
 
 export const POSPaymentSchema = z.object({

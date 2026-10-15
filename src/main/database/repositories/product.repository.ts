@@ -62,7 +62,8 @@ export class ProductRepository extends BaseRepository<ProductEntity> {
         selling_price, wholesale_price, min_selling_price, tax_rate, prices_include_tax, is_tax_exempt,
         allow_discount, track_inventory, min_stock, max_stock, reorder_level, default_reorder_qty,
         allow_negative_stock, storage_location, shelf_code, track_batches, track_expiry, track_serials,
-        shelf_life_days, image_url, thumbnail_url, preferred_receipt_name, is_active, is_featured, created_by,
+        shelf_life_days, image_url, thumbnail_url, preferred_receipt_name, is_active, is_featured,
+        piece_weight, pieces_per_pack, created_by,
         created_at, updated_at
       ) VALUES (
         ?, ?, ?, ?, ?, ?, ?, ?, ?,
@@ -72,7 +73,7 @@ export class ProductRepository extends BaseRepository<ProductEntity> {
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?, ?,
-        ?, ?
+        ?, ?, ?, ?
       )
     `);
 
@@ -123,6 +124,8 @@ export class ProductRepository extends BaseRepository<ProductEntity> {
       product.preferred_receipt_name || null,
       product.is_active ? 1 : 0,
       product.is_featured ? 1 : 0,
+      product.piece_weight || 0,
+      product.pieces_per_pack || 1,
       product.created_by || null,
       now,
       now,
@@ -157,6 +160,7 @@ export class ProductRepository extends BaseRepository<ProductEntity> {
         default_reorder_qty = ?, allow_negative_stock = ?, storage_location = ?, shelf_code = ?,
         track_batches = ?, track_expiry = ?, track_serials = ?, shelf_life_days = ?, image_url = ?,
         thumbnail_url = ?, preferred_receipt_name = ?, is_active = ?, is_featured = ?,
+        piece_weight = ?, pieces_per_pack = ?,
         updated_by = ?, updated_at = ?
       WHERE id = ?
     `);
@@ -245,6 +249,8 @@ export class ProductRepository extends BaseRepository<ProductEntity> {
       product.preferred_receipt_name || existing.preferred_receipt_name || null,
       product.is_active !== undefined ? (product.is_active ? 1 : 0) : existing.is_active,
       product.is_featured !== undefined ? (product.is_featured ? 1 : 0) : existing.is_featured,
+      product.piece_weight !== undefined ? product.piece_weight : (existing.piece_weight || 0),
+      product.pieces_per_pack !== undefined ? product.pieces_per_pack : (existing.pieces_per_pack || 1),
       product.updated_by || null,
       now,
       product.id,
