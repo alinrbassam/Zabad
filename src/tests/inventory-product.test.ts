@@ -40,4 +40,43 @@ describe('Product Schema & Validation', () => {
 
     expect(() => ProductSchema.parse(invalidProduct)).toThrow();
   });
+
+  it('should parse pieceWeight and piecesPerPack properly', () => {
+    const weightedProduct = {
+      sku: 'SKU-TILE-1',
+      nameEn: 'Floor Tiles 60x60',
+      nameAr: 'بلاط أرضيات',
+      productType: 'Standard stock item',
+      categoryId: 'cat-tiles',
+      baseUnitId: 'unit-box',
+      purchaseCost: 50,
+      sellingPrice: 100,
+      minSellingPrice: 80,
+      pieceWeight: 0.25,
+      piecesPerPack: 12,
+    };
+
+    const parsed = ProductSchema.parse(weightedProduct);
+    expect(parsed.pieceWeight).toBe(0.25);
+    expect(parsed.piecesPerPack).toBe(12);
+  });
+
+  it('should gracefully handle empty or NaN pieceWeight and piecesPerPack', () => {
+    const rawWithNaN = {
+      sku: 'SKU-TILE-2',
+      nameEn: 'Loose Tiles',
+      productType: 'Standard stock item',
+      categoryId: 'cat-tiles',
+      baseUnitId: 'unit-box',
+      purchaseCost: 10,
+      sellingPrice: 20,
+      minSellingPrice: 15,
+      pieceWeight: NaN,
+      piecesPerPack: '',
+    };
+
+    const parsed = ProductSchema.parse(rawWithNaN);
+    expect(parsed.pieceWeight).toBe(0);
+    expect(parsed.piecesPerPack).toBe(1);
+  });
 });

@@ -96,11 +96,20 @@ export const ProductFormPage: React.FC = () => {
     // Ensure nameAr mirrors nameEn if not explicitly set
     if (!data.nameAr) data.nameAr = data.nameEn;
 
+    const payload: ProductInput = {
+      ...data,
+      pieceWeight: isNaN(Number(data.pieceWeight)) ? 0 : Number(data.pieceWeight),
+      piecesPerPack:
+        isNaN(Number(data.piecesPerPack)) || Number(data.piecesPerPack) < 1
+          ? 1
+          : Math.round(Number(data.piecesPerPack)),
+    };
+
     let ok = false;
     if (id) {
-      ok = await updateProduct(id, data, user?.id);
+      ok = await updateProduct(id, payload, user?.id);
     } else {
-      ok = Boolean(await createProduct(data, user?.id));
+      ok = Boolean(await createProduct(payload, user?.id));
     }
 
     if (ok) {

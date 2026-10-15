@@ -109,8 +109,8 @@ export const ThermalReceiptModal: React.FC<Props> = ({
                   : (item.name_en || item.name_ar || item.product_id);
                 const unitLabel = item.unit_name_ar || item.unit_symbol || item.unit_code || (language === 'ar' ? 'كغ' : 'kg');
 
-                const pcWeight = Number(item.piece_weight) || 0;
-                const pcsPerPack = Number(item.pieces_per_pack) || 1;
+                const pcWeight = Number(item.piece_weight) || Number(item.product_piece_weight) || 0;
+                const pcsPerPack = Number(item.pieces_per_pack) || Number(item.product_pieces_per_pack) || 1;
                 const isPieceMode = item.selling_mode === 'piece';
                 const hasWeight = pcWeight > 0 || (Number(item.total_weight) || 0) > 0;
                 const hasPack = pcsPerPack > 1;
@@ -120,7 +120,7 @@ export const ThermalReceiptModal: React.FC<Props> = ({
                   if (isPieceMode) {
                     qtyDisplay = `${item.quantity} ${language === 'ar' ? 'حبة' : 'pcs'}`;
                   } else {
-                    qtyDisplay = `${item.quantity} ${language === 'ar' ? 'كرتون' : 'packs'}`;
+                    qtyDisplay = `${item.quantity} ${unitLabel || (language === 'ar' ? 'كرتون' : 'packs')}`;
                   }
                 }
 
@@ -176,7 +176,15 @@ export const ThermalReceiptModal: React.FC<Props> = ({
           {/* Items Summary (Item Count & Total Units) */}
           {(() => {
             const totalOrderWeight = sale.items
-              ? sale.items.reduce((sum: number, it: any) => sum + (Number(it.total_weight) || 0), 0)
+              ? sale.items.reduce((sum: number, it: any) => {
+                  const lineTotalW = Number(it.total_weight) || 0;
+                  if (lineTotalW > 0) return sum + lineTotalW;
+                  const pw = Number(it.piece_weight) || Number(it.product_piece_weight) || 0;
+                  const ppp = Number(it.pieces_per_pack) || Number(it.product_pieces_per_pack) || 1;
+                  const isPiece = it.selling_mode === 'piece';
+                  const calcW = pw > 0 ? (isPiece ? it.quantity * pw : it.quantity * ppp * pw) : 0;
+                  return sum + calcW;
+                }, 0)
               : 0;
 
             return (

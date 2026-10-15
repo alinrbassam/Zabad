@@ -544,7 +544,9 @@ export class SupabaseSyncService {
               }
 
               if (shouldWrite && updateStmt) {
-                const nonPkValues = nonPkCols.map((col) => (row[col] !== undefined ? row[col] : null));
+                const nonPkValues = nonPkCols.map((col) =>
+                  row[col] !== undefined ? row[col] : existing ? existing[col] : null,
+                );
                 updateStmt.run(...nonPkValues, ...pkValues);
                 rowsMerged++;
               }

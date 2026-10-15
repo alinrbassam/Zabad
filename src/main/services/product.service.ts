@@ -107,6 +107,14 @@ export class ProductService {
       preferred_receipt_name: input.preferredReceiptName,
       is_active: input.isActive ? 1 : 0,
       is_featured: input.isFeatured ? 1 : 0,
+      piece_weight:
+        input.pieceWeight !== undefined && !isNaN(Number(input.pieceWeight))
+          ? Number(input.pieceWeight)
+          : 0,
+      pieces_per_pack:
+        input.piecesPerPack !== undefined && !isNaN(Number(input.piecesPerPack))
+          ? Math.max(1, Number(input.piecesPerPack))
+          : 1,
       created_by: userId,
     });
 
@@ -217,6 +225,18 @@ export class ProductService {
       preferred_receipt_name: input.preferredReceiptName,
       is_active: input.isActive !== undefined ? (input.isActive ? 1 : 0) : undefined,
       is_featured: input.isFeatured !== undefined ? (input.isFeatured ? 1 : 0) : undefined,
+      piece_weight:
+        input.pieceWeight !== undefined
+          ? isNaN(Number(input.pieceWeight))
+            ? 0
+            : Number(input.pieceWeight)
+          : undefined,
+      pieces_per_pack:
+        input.piecesPerPack !== undefined
+          ? isNaN(Number(input.piecesPerPack))
+            ? 1
+            : Math.max(1, Number(input.piecesPerPack))
+          : undefined,
       updated_by: userId,
     });
 

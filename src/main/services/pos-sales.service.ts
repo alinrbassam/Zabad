@@ -276,7 +276,9 @@ export class POSSalesService {
 
     const items = this.db
       .prepare(`
-        SELECT soi.*, p.name_en, p.name_ar, u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol
+        SELECT soi.*, p.name_en, p.name_ar,
+               p.piece_weight as product_piece_weight, p.pieces_per_pack as product_pieces_per_pack,
+               u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol
         FROM sales_order_items soi
         LEFT JOIN products p ON soi.product_id = p.id
         LEFT JOIN units u ON soi.unit_id = u.id

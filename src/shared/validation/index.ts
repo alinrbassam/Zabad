@@ -238,8 +238,18 @@ export const RawProductSchema = z.object({
   preferredReceiptName: z.string().optional(),
   isActive: z.boolean().default(true),
   isFeatured: z.boolean().default(false),
-  pieceWeight: z.number().min(0).default(0).optional(),
-  piecesPerPack: z.number().int().min(1).default(1).optional(),
+  pieceWeight: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined || Number.isNaN(val) ? 0 : Number(val)),
+      z.number().min(0).default(0),
+    )
+    .optional(),
+  piecesPerPack: z
+    .preprocess(
+      (val) => (val === '' || val === null || val === undefined || Number.isNaN(val) ? 1 : Math.max(1, Number(val))),
+      z.number().int().min(1).default(1),
+    )
+    .optional(),
 
   // Initial Stock (Opening Stock)
   openingStockQty: z.number().min(0).optional(),
