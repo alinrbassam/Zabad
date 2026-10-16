@@ -8,6 +8,7 @@ import { Card } from '@components/ui/Card';
 import { Badge } from '@components/ui/Badge';
 import { UnitEntity } from '@shared/types';
 import { Scale, Plus } from 'lucide-react';
+import { formatUnitDisplayName } from '@utils/unit';
 
 export const UnitsPage: React.FC = () => {
   const { units, loadMetadata } = useProductStore();
@@ -51,9 +52,11 @@ export const UnitsPage: React.FC = () => {
       header: 'Unit Name',
       render: (u) => (
         <div>
-          <span className="font-bold text-slate-800 dark:text-slate-200 block">{u.name_en}</span>
+          <span className="font-bold text-slate-800 dark:text-slate-200 block">
+            {formatUnitDisplayName(u)}
+          </span>
           <span className="text-[10px] text-slate-500">
-            {u.name_ar} • Symbol: {u.symbol}
+            Code: {u.code} • Symbol: {u.symbol}
           </span>
         </div>
       ),

@@ -15,71 +15,12 @@ export class UnitRepository {
         id: 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035',
         code: 'pcs',
         name_en: 'Piece',
-        name_ar: ' قطعة',
+        name_ar: 'قطعة',
         symbol: 'pcs',
         cat: 'Count',
         dec: 0,
         prec: 0,
-      },
-      {
-        id: '43fb4b80-087d-45b4-9c2f-27201d15d637',
-        code: 'kg',
-        name_en: 'Kilogram',
-        name_ar: 'كيلوجرام',
-        symbol: 'kg',
-        cat: 'Weight',
-        dec: 1,
-        prec: 3,
-      },
-      {
-        id: '0a97133a-9d66-48d4-a37c-3577e2b7e4df',
-        code: 'g',
-        name_en: 'Gram',
-        name_ar: 'جرام',
-        symbol: 'g',
-        cat: 'Weight',
-        dec: 1,
-        prec: 2,
-      },
-      {
-        id: '544b75f5-6fc0-4ace-a43e-07deedda8b2c',
-        code: 'l',
-        name_en: 'Liter',
-        name_ar: 'لتر',
-        symbol: 'L',
-        cat: 'Volume',
-        dec: 1,
-        prec: 3,
-      },
-      {
-        id: '67ad86da-5f31-4255-a466-67c772d7e0a3',
-        code: 'ml',
-        name_en: 'Milliliter',
-        name_ar: 'مليلتر',
-        symbol: 'ml',
-        cat: 'Volume',
-        dec: 0,
-        prec: 0,
-      },
-      {
-        id: 'fb6ad0f2-d609-4b9d-936b-d7c9b3e78355',
-        code: 'm',
-        name_en: 'Meter',
-        name_ar: 'متر',
-        symbol: 'm',
-        cat: 'Length',
-        dec: 1,
-        prec: 2,
-      },
-      {
-        id: 'a624a0e8-3b09-49c9-a6ba-669337912adf',
-        code: 'box',
-        name_en: 'Box',
-        name_ar: 'صندوق',
-        symbol: 'box',
-        cat: 'Packaging',
-        dec: 0,
-        prec: 0,
+        active: 1,
       },
       {
         id: '3d632883-8a79-4c4a-acd8-c3b3751f030b',
@@ -90,6 +31,40 @@ export class UnitRepository {
         cat: 'Packaging',
         dec: 0,
         prec: 0,
+        active: 1,
+      },
+      {
+        id: '43fb4b80-087d-45b4-9c2f-27201d15d637',
+        code: 'kg',
+        name_en: 'Kilogram',
+        name_ar: 'كيلوغرام',
+        symbol: 'kg',
+        cat: 'Weight',
+        dec: 1,
+        prec: 3,
+        active: 1,
+      },
+      {
+        id: 'fb6ad0f2-d609-4b9d-936b-d7c9b3e78355',
+        code: 'm',
+        name_en: 'Meter',
+        name_ar: 'متر',
+        symbol: 'm',
+        cat: 'Length',
+        dec: 1,
+        prec: 2,
+        active: 1,
+      },
+      {
+        id: 'a624a0e8-3b09-49c9-a6ba-669337912adf',
+        code: 'box',
+        name_en: 'Box',
+        name_ar: 'صندوق',
+        symbol: 'box',
+        cat: 'Packaging',
+        dec: 0,
+        prec: 0,
+        active: 0,
       },
       {
         id: '79a4a165-841c-4652-b2f3-e5cb41694880',
@@ -100,21 +75,67 @@ export class UnitRepository {
         cat: 'Packaging',
         dec: 0,
         prec: 0,
+        active: 0,
+      },
+      {
+        id: '0a97133a-9d66-48d4-a37c-3577e2b7e4df',
+        code: 'g',
+        name_en: 'Gram',
+        name_ar: 'جرام',
+        symbol: 'g',
+        cat: 'Weight',
+        dec: 1,
+        prec: 2,
+        active: 0,
+      },
+      {
+        id: '544b75f5-6fc0-4ace-a43e-07deedda8b2c',
+        code: 'l',
+        name_en: 'Liter',
+        name_ar: 'لتر',
+        symbol: 'L',
+        cat: 'Volume',
+        dec: 1,
+        prec: 3,
+        active: 0,
+      },
+      {
+        id: '67ad86da-5f31-4255-a466-67c772d7e0a3',
+        code: 'ml',
+        name_en: 'Milliliter',
+        name_ar: 'مليلتر',
+        symbol: 'ml',
+        cat: 'Volume',
+        dec: 0,
+        prec: 0,
+        active: 0,
       },
     ];
 
     const stmt = this.db.prepare(`
       INSERT OR IGNORE INTO units (id, code, name_en, name_ar, symbol, unit_category, allow_decimals, decimal_precision, is_active)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     for (const u of defaults) {
-      stmt.run(u.id, u.code, u.name_en, u.name_ar, u.symbol, u.cat, u.dec, u.prec);
+      stmt.run(u.id, u.code, u.name_en, u.name_ar, u.symbol, u.cat, u.dec, u.prec, u.active);
     }
   }
 
   public findAll(): UnitEntity[] {
-    const stmt = this.db.prepare('SELECT * FROM units WHERE is_active = 1 ORDER BY name_en ASC');
+    const stmt = this.db.prepare(`
+      SELECT * FROM units 
+      WHERE is_active = 1 
+      ORDER BY 
+        CASE LOWER(code)
+          WHEN 'pcs' THEN 1
+          WHEN 'carton' THEN 2
+          WHEN 'kg' THEN 3
+          WHEN 'm' THEN 4
+          ELSE 5
+        END,
+        name_en ASC
+    `);
     return stmt.all() as UnitEntity[];
   }
 

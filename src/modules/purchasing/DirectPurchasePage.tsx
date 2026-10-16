@@ -11,6 +11,7 @@ import { Button } from '@components/ui/Button';
 import { Alert } from '@components/ui/Alert';
 import { Dialog } from '@components/ui/Dialog';
 import { Store, Plus, Trash2, PlusCircle } from 'lucide-react';
+import { formatUnitDisplayName } from '@utils/unit';
 
 interface DirectLine {
   product: ProductEntity;
@@ -507,7 +508,7 @@ export const DirectPurchasePage: React.FC = () => {
               >
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name_en} ({u.symbol})
+                    {formatUnitDisplayName(u)}
                   </option>
                 ))}
               </select>

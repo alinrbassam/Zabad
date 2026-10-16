@@ -12,6 +12,7 @@ import { migrationV6 } from './database/migrations/v6_reports';
 import { migrationV7 } from './database/migrations/v7_commercial';
 import { migrationV8, ensureBorrowColumns } from './database/migrations/v8_expenses_and_borrow';
 import { migrationV9, ensureWeightColumns } from './database/migrations/v9_weight_and_packaging';
+import { migrationV10, ensureCleanUnits } from './database/migrations/v10_simplify_units';
 import path from 'path';
 import { logger } from './services/logger.service';
 import { DemoDataService } from './services/demo-data.service';
@@ -45,11 +46,13 @@ app.whenReady().then(() => {
       migrationV7,
       migrationV8,
       migrationV9,
+      migrationV10,
     ]);
     ensureBorrowColumns(db);
     ensureWeightColumns(db);
+    ensureCleanUnits(db);
 
-    logger.info('App', 'Database migrations v2 through v9 executed successfully');
+    logger.info('App', 'Database migrations v2 through v10 executed successfully');
 
     const demoService = new DemoDataService(db);
     demoService.ensureZabadCatalog();

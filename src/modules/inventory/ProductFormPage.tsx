@@ -11,6 +11,7 @@ import { Button } from '@components/ui/Button';
 import { Card } from '@components/ui/Card';
 import { Alert } from '@components/ui/Alert';
 import { Trash2 } from 'lucide-react';
+import { formatUnitDisplayName } from '@utils/unit';
 
 export const ProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -178,7 +179,7 @@ export const ProductFormPage: React.FC = () => {
               >
                 {units.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name_en} ({u.symbol})
+                    {formatUnitDisplayName(u)}
                   </option>
                 ))}
               </select>
