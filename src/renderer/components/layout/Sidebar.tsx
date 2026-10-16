@@ -78,7 +78,7 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'pos-debts',
-          label: 'Dettes Clients - ديون العملاء',
+          label: 'Dettes Clients - ديون الزبائن',
           icon: HandCoins,
           path: '/pos/debts',
         },
@@ -92,13 +92,13 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'finance',
-      label: 'Finances & Dépenses - المالية والمصاريف',
+      label: 'Finances - المالية والمصاريف',
       icon: Receipt,
       color: 'text-rose-400',
       items: [
         {
           id: 'expenses',
-          label: 'Dépenses Magasin - المصاريف',
+          label: 'Dépenses - المصاريف',
           icon: Receipt,
           path: '/expenses',
         },
@@ -138,7 +138,7 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'inventory',
-      label: 'Stock & Inventaire - المخزون والمنتجات',
+      label: 'Stock - المخزون والمنتجات',
       icon: Package,
       color: 'text-amber-400',
       items: [
@@ -168,7 +168,7 @@ export const Sidebar: React.FC = () => {
         },
         {
           id: 'adjustments',
-          label: '5. Ajustements Stock - تسوية المخزون',
+          label: '5. Ajustements - تسوية المخزون',
           icon: Sliders,
           path: '/inventory/adjustments',
         },
@@ -220,7 +220,7 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       className={`${
-        isCollapsed ? 'w-16' : 'w-72'
+        isCollapsed ? 'w-16' : 'w-80'
       } bg-[#0B1120] text-slate-300 flex flex-col h-screen border-r border-slate-800/80 select-none transition-all duration-300 shrink-0`}
     >
       {/* App Branding & Collapse Toggle */}

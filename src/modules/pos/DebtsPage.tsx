@@ -278,7 +278,7 @@ export const DebtsPage: React.FC = () => {
             <thead>
               <tr className="bg-slate-900/80 border-b border-slate-800 text-slate-400 uppercase font-semibold">
                 <th className="p-3.5">{language === 'ar' ? 'رقم الفاتورة' : 'Invoice #'}</th>
-                <th className="p-3.5">{language === 'ar' ? 'العميل / المستدين' : 'Customer / Borrower'}</th>
+                <th className="p-3.5">{language === 'ar' ? 'الزبون / المستدين' : 'Customer / Borrower'}</th>
                 <th className="p-3.5">{language === 'ar' ? 'تاريخ المعاملة' : 'Date Borrowed'}</th>
                 <th className="p-3.5">{language === 'ar' ? 'تاريخ السداد المتوقع' : 'Due Date'}</th>
                 <th className="p-3.5">{language === 'ar' ? 'الإجمالي' : 'Total'}</th>
@@ -302,7 +302,7 @@ export const DebtsPage: React.FC = () => {
                     <td className="p-3.5">
                       <div className="font-bold text-white flex items-center space-x-1 rtl:space-x-reverse">
                         <User className="h-3.5 w-3.5 text-amber-400" />
-                        <span>{item.customer_name || (language === 'ar' ? 'عميل غير مسجل' : 'Unnamed Customer')}</span>
+                        <span>{item.customer_name || (language === 'ar' ? 'زبون غير مسجل' : 'Unnamed Customer')}</span>
                       </div>
                       {item.customer_phone && (
                         <div className="text-[11px] text-slate-400 flex items-center space-x-1 rtl:space-x-reverse mt-0.5">

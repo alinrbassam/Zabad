@@ -80,8 +80,8 @@ export const ThermalReceiptModal: React.FC<Props> = ({
               <div className="flex justify-between font-bold text-slate-900 bg-slate-100 p-1 rounded border border-slate-200">
                 <span>
                   {sale.payment_status === 'Paid'
-                    ? (language === 'ar' ? 'العميل:' : 'Customer:')
-                    : (language === 'ar' ? 'العميل / المستدين:' : 'Borrower / Customer:')}
+                    ? (language === 'ar' ? 'الزبون:' : 'Customer:')
+                    : (language === 'ar' ? 'الزبون / المستدين:' : 'Borrower / Customer:')}
                 </span>
                 <span className="font-black">{sale.customer_name}</span>
               </div>

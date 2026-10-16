@@ -108,7 +108,7 @@ export const POSPaymentModal: React.FC<Props> = ({
     if (!borrowerName.trim()) {
       setValidationError(
         language === 'ar'
-          ? 'يرجى إدخال اسم المستدين / العميل للمتابعة'
+          ? 'يرجى إدخال اسم الزبون / المستدين للمتابعة'
           : 'Please enter borrower name to continue',
       );
       return;
@@ -241,7 +241,7 @@ export const POSPaymentModal: React.FC<Props> = ({
             {/* Customer Name Input */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                {language === 'ar' ? 'اسم العميل / الزبون (اختياري):' : 'Customer Name (optional):'}
+                {language === 'ar' ? 'اسم الزبون (اختياري):' : 'Customer Name (optional):'}
               </label>
               <div className="relative">
                 <User className="absolute left-3 rtl:left-auto rtl:right-3 top-3 h-4 w-4 text-slate-400" />
@@ -254,7 +254,7 @@ export const POSPaymentModal: React.FC<Props> = ({
                   }}
                   placeholder={
                     language === 'ar'
-                      ? 'اسم العميل ليظهر على الفاتورة (مثال: أبو علي)...'
+                      ? 'اسم الزبون ليظهر على الفاتورة (مثال: أبو علي)...'
                       : 'Customer name to appear on receipt...'
                   }
                   className="w-full pl-9 rtl:pl-3 rtl:pr-9 pr-3 py-2.5 bg-white border border-slate-300 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-500 shadow-xs"
@@ -264,7 +264,7 @@ export const POSPaymentModal: React.FC<Props> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                {language === 'ar' ? 'المبلغ المستلم من العميل (FCFA):' : 'Cash Received from Customer (FCFA):'}
+                {language === 'ar' ? 'المبلغ المستلم من الزبون (FCFA):' : 'Cash Received from Customer (FCFA):'}
               </label>
               <div className="relative">
                 <input
@@ -321,7 +321,7 @@ export const POSPaymentModal: React.FC<Props> = ({
               <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
               <span>
                 {language === 'ar'
-                  ? 'تسجيل البضاعة كدين في ذمة العميل بدون استلام المبلغ أو بدفعة جزئية مقدمة.'
+                  ? 'تسجيل البضاعة كدين في ذمة الزبون بدون استلام المبلغ أو بدفعة جزئية مقدمة.'
                   : 'Record goods taken on credit without immediate payment or with partial down payment.'}
               </span>
             </div>
@@ -336,7 +336,7 @@ export const POSPaymentModal: React.FC<Props> = ({
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 <span className="text-rose-500 mr-1 rtl:mr-0 rtl:ml-1">*</span>
-                {language === 'ar' ? 'اسم المستدين / العميل:' : 'Borrower / Customer Name:'}
+                {language === 'ar' ? 'اسم الزبون / المستدين:' : 'Borrower / Customer Name:'}
               </label>
               <div className="relative">
                 <User className="absolute left-3 rtl:left-auto rtl:right-3 top-3 h-4 w-4 text-slate-400" />

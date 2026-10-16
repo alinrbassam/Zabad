@@ -449,7 +449,7 @@ export const POSTerminalPage: React.FC = () => {
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder={
                 language === 'ar'
-                  ? 'اسم العميل ليظهر على الفاتورة (اختياري)...'
+                  ? 'اسم الزبون ليظهر على الفاتورة (اختياري)...'
                   : 'Customer name on receipt (optional)...'
               }
               className="w-full pl-8 rtl:pl-7 rtl:pr-8 pr-7 py-1.5 bg-slate-50 hover:bg-slate-100/70 focus:bg-white border border-slate-200 focus:border-sky-500 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-sky-500 transition-all font-medium"
