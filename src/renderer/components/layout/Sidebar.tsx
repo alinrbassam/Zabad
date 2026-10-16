@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useLanguageStore } from '../../stores/useLanguageStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import {
   LayoutDashboard,
@@ -24,7 +23,6 @@ import {
 } from 'lucide-react';
 
 export const Sidebar: React.FC = () => {
-  const { t, language } = useLanguageStore();
   const { pathname } = useLocation();
   const { logout, user, activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
@@ -49,12 +47,6 @@ export const Sidebar: React.FC = () => {
     });
   };
 
-  const getLabel = (ar: string, en: string, fr: string) => {
-    if (language === 'ar') return ar;
-    if (language === 'fr') return fr;
-    return en;
-  };
-
   const handleRoleSwitch = () => {
     if (activeRoleMode === 'cashier') {
       setManagerUnlockModalOpen(true);
@@ -74,25 +66,25 @@ export const Sidebar: React.FC = () => {
   const navSections = [
     {
       id: 'sell',
-      label: getLabel('البيع (نقطة البيع)', 'Sell (POS)', 'Vente (Caisse)'),
+      label: 'Vente (POS) - نقطة البيع',
       icon: ShoppingCart,
       color: 'text-sky-400',
       items: [
         {
           id: 'pos-terminal',
-          label: getLabel('نقطة البيع (الكاشير)', 'POS Checkout', 'Caisse Enregistreuse'),
+          label: 'Caisse POS - الصندوق',
           icon: ShoppingCart,
           path: '/pos',
         },
         {
           id: 'pos-debts',
-          label: getLabel('سجل الديون (الآجل)', 'Customer Debts', 'Dettes Clients (Crédit)'),
+          label: 'Dettes Clients - ديون العملاء',
           icon: HandCoins,
           path: '/pos/debts',
         },
         {
           id: 'sales-history',
-          label: getLabel('سجل المبيعات والفواتير', 'Sales History', 'Historique des Ventes'),
+          label: 'Historique Ventes - سجل المبيعات',
           icon: History,
           path: '/pos/sales',
         },
@@ -100,19 +92,19 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'finance',
-      label: getLabel('المالية والمصاريف', 'Finance & Expenses', 'Finances & Dépenses'),
+      label: 'Finances & Dépenses - المالية والمصاريف',
       icon: Receipt,
       color: 'text-rose-400',
       items: [
         {
           id: 'expenses',
-          label: getLabel('المصاريف التشغيلية', 'Store Expenses', 'Dépenses du Magasin'),
+          label: 'Dépenses Magasin - المصاريف',
           icon: Receipt,
           path: '/expenses',
         },
         {
           id: 'financial-report',
-          label: getLabel('تقرير الأرباح والخسائر', 'Financial P&L Report', 'Rapport Financier P&L'),
+          label: 'Rapport P&L - تقرير الأرباح والخسائر',
           icon: BarChart2,
           path: '/reports/financial',
         },
@@ -120,25 +112,25 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'buy',
-      label: getLabel('الشراء (المشتريات)', 'Buy (Purchases)', 'Achats & Approvisionnement'),
+      label: 'Achats - المشتريات',
       icon: Truck,
       color: 'text-emerald-400',
       items: [
         {
           id: 'direct-purchase',
-          label: getLabel('شراء مباشر (إدخال بضاعة)', 'Direct Purchase', 'Achat Direct / Entrée'),
+          label: 'Achat Direct - شراء مباشر',
           icon: Store,
           path: '/purchasing/direct',
         },
         {
           id: 'purchase-orders',
-          label: getLabel('فواتير وأوامر الشراء', 'Purchase Orders', 'Bons de Commande'),
+          label: 'Bons de Commande - أوامر الشراء',
           icon: Truck,
           path: '/purchasing/orders',
         },
         {
           id: 'purchasing-history',
-          label: getLabel('سجل المشتريات', 'Purchasing History', 'Historique des Achats'),
+          label: 'Historique Achats - سجل المشتريات',
           icon: History,
           path: '/purchasing/history',
         },
@@ -146,37 +138,37 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'inventory',
-      label: getLabel('المخزون والمنتجات', 'Inventory & Stock', 'Stock & Produits'),
+      label: 'Stock & Inventaire - المخزون والمنتجات',
       icon: Package,
       color: 'text-amber-400',
       items: [
         {
           id: 'suppliers',
-          label: getLabel('1. الموردين (Suppliers)', '1. Suppliers', '1. Fournisseurs'),
+          label: '1. Fournisseurs - الموردين',
           icon: Users,
           path: '/inventory/suppliers',
         },
         {
           id: 'categories',
-          label: getLabel('2. الأقسام (Categories)', '2. Categories', '2. Catégories'),
+          label: '2. Catégories - الأقسام',
           icon: FolderTree,
           path: '/inventory/categories',
         },
         {
           id: 'product-new',
-          label: getLabel('3. إضافة صنف جديد (Add Item)', '3. Add New Item', '3. Ajouter un Produit'),
+          label: '3. Nouvel Article - إضافة صنف',
           icon: PlusCircle,
           path: '/inventory/products/new',
         },
         {
           id: 'products-list',
-          label: getLabel('4. المخزون والمنتجات (Inventory)', '4. Products & Stock', '4. Produits & Stock'),
+          label: '4. Produits & Stock - المنتجات',
           icon: Package,
           path: '/inventory/products',
         },
         {
           id: 'adjustments',
-          label: getLabel('5. جرد وتسوية المخزون (Adjustments)', '5. Stock Adjustments', '5. Ajustements de Stock'),
+          label: '5. Ajustements Stock - تسوية المخزون',
           icon: Sliders,
           path: '/inventory/adjustments',
         },
@@ -228,7 +220,7 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       className={`${
-        isCollapsed ? 'w-16' : 'w-64'
+        isCollapsed ? 'w-16' : 'w-72'
       } bg-[#0B1120] text-slate-300 flex flex-col h-screen border-r border-slate-800/80 select-none transition-all duration-300 shrink-0`}
     >
       {/* App Branding & Collapse Toggle */}
@@ -244,13 +236,13 @@ export const Sidebar: React.FC = () => {
           {!isCollapsed && (
             <div className="min-w-0 truncate">
               <h2 className="text-sm font-black text-white tracking-wide flex items-center space-x-1 rtl:space-x-reverse">
-                <span>{language === 'ar' ? 'نظام خليل' : 'Khalil POS'}</span>
+                <span>Khalil POS</span>
                 <span className="text-[9px] bg-cyan-500/20 text-cyan-400 font-mono px-1 py-0.2 rounded">v2</span>
               </h2>
-              <span className="text-[10px] text-cyan-400/90 font-medium truncate block">
+              <span className="text-[10px] text-cyan-400/90 font-medium truncate block" dir="ltr">
                 {activeRoleMode === 'cashier'
-                  ? getLabel('الكاشير (بيع فقط)', 'Cashier', 'Caisse')
-                  : getLabel('المدير', 'Manager', 'Gérant')}
+                  ? 'Caisse - كاشير'
+                  : 'Gérant - مدير'}
               </span>
             </div>
           )}
@@ -276,10 +268,10 @@ export const Sidebar: React.FC = () => {
             <NavLink
               to="/"
               end
-              title={t('overview')}
+              title="Aperçu - نظرة عامة"
               className={({ isActive }) =>
                 `flex items-center ${
-                  isCollapsed ? 'justify-center p-2.5' : 'space-x-3 rtl:space-x-reverse px-3.5 py-2.5'
+                  isCollapsed ? 'justify-center p-2.5' : 'space-x-3 rtl:space-x-reverse px-3 py-2'
                 } rounded-xl text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-gradient-to-r from-sky-600 to-cyan-600 text-white shadow-md shadow-sky-500/25 border border-sky-400/30'
@@ -288,7 +280,7 @@ export const Sidebar: React.FC = () => {
               }
             >
               <LayoutDashboard className="h-4 w-4 text-cyan-400 shrink-0" />
-              {!isCollapsed && <span>{t('overview')}</span>}
+              {!isCollapsed && <span className="truncate" dir="ltr">Aperçu - نظرة عامة</span>}
             </NavLink>
 
             <div className="border-b border-slate-800/60 my-2" />
@@ -333,14 +325,14 @@ export const Sidebar: React.FC = () => {
                 onClick={() => toggleGroup(sec.id)}
                 className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-bold hover:bg-slate-800/60 text-slate-300 transition-colors"
               >
-                <div className="flex items-center space-x-3 rtl:space-x-reverse">
-                  <SectionIcon className={`h-4 w-4 ${sec.color}`} />
-                  <span className="text-xs font-semibold">{sec.label}</span>
+                <div className="flex items-center space-x-2.5 rtl:space-x-reverse min-w-0">
+                  <SectionIcon className={`h-4 w-4 ${sec.color} shrink-0`} />
+                  <span className="text-xs font-semibold truncate" dir="ltr">{sec.label}</span>
                 </div>
                 {isOpen ? (
-                  <ChevronDown className="h-3.5 w-3.5 text-slate-500" />
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-500 shrink-0" />
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5 text-slate-500 rtl:rotate-180" />
+                  <ChevronRight className="h-3.5 w-3.5 text-slate-500 rtl:rotate-180 shrink-0" />
                 )}
               </button>
 
@@ -361,7 +353,7 @@ export const Sidebar: React.FC = () => {
                         }`}
                       >
                         <ItemIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span>{item.label}</span>
+                        <span className="truncate" dir="ltr">{item.label}</span>
                       </NavLink>
                     );
                   })}
@@ -376,10 +368,10 @@ export const Sidebar: React.FC = () => {
             <div className="border-b border-slate-800 my-2" />
             <NavLink
               to="/settings"
-              title={t('settings')}
+              title="Paramètres - الإعدادات"
               className={({ isActive }) =>
                 `flex items-center ${
-                  isCollapsed ? 'justify-center p-2.5' : 'space-x-3 rtl:space-x-reverse px-3 py-2.5'
+                  isCollapsed ? 'justify-center p-2.5' : 'space-x-3 rtl:space-x-reverse px-3 py-2'
                 } rounded-xl text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-sky-600 text-white shadow-md shadow-sky-600/20'
@@ -388,7 +380,7 @@ export const Sidebar: React.FC = () => {
               }
             >
               <Settings className="h-4 w-4 text-slate-400 shrink-0" />
-              {!isCollapsed && <span>{t('settings')}</span>}
+              {!isCollapsed && <span className="truncate" dir="ltr">Paramètres - الإعدادات</span>}
             </NavLink>
           </>
         )}
@@ -399,20 +391,21 @@ export const Sidebar: React.FC = () => {
         {/* Quick Role Switcher Button */}
         {!isCollapsed ? (
           <div className="bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 pl-1 rtl:pl-0 rtl:pr-1">
-              {getLabel('الوضع:', 'Mode:', 'Mode :')}
+            <span className="text-[11px] font-semibold text-slate-400 pl-1 rtl:pl-0 rtl:pr-1" dir="ltr">
+              Mode - الوضع:
             </span>
             <button
               onClick={handleRoleSwitch}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
                 activeRoleMode === 'cashier'
                   ? 'bg-sky-600 text-white shadow-xs'
                   : 'bg-emerald-600 text-white shadow-xs'
               }`}
+              dir="ltr"
             >
               {activeRoleMode === 'cashier'
-                ? getLabel('🛒 كاشير (تبديل للمدير)', '🛒 Cashier (Switch)', '🛒 Caisse (Changer)')
-                : getLabel('👑 مدير (تبديل للكاشير)', '👑 Manager (Switch)', '👑 Gérant (Changer)')}
+                ? '🛒 Caisse - كاشير'
+                : '👑 Gérant - مدير'}
             </button>
           </div>
         ) : (
@@ -448,16 +441,16 @@ export const Sidebar: React.FC = () => {
           } rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors`}
           title={
             activeRoleMode === 'manager'
-              ? getLabel('قفل والرجوع للكاشير', 'Lock to Cashier', 'Verrouiller en Caisse')
-              : getLabel('إعادة ضبط الكاشير', 'Reset Cashier Session', 'Réinitialiser la Caisse')
+              ? 'Verrouiller en Caisse - قفل إلى الكاشير'
+              : 'Réinitialiser la Caisse - إعادة ضبط الكاشير'
           }
         >
           <LogOut className="h-3.5 w-3.5 shrink-0" />
           {!isCollapsed && (
-            <span>
+            <span className="truncate" dir="ltr">
               {activeRoleMode === 'manager'
-                ? getLabel('قفل والرجوع للكاشير', 'Lock to Cashier', 'Verrouiller en Caisse')
-                : getLabel('إعادة ضبط الكاشير', 'Reset Cashier Session', 'Réinitialiser la Caisse')}
+                ? 'Verrouiller en Caisse - قفل إلى الكاشير'
+                : 'Réinitialiser la Caisse - إعادة ضبط الكاشير'}
             </span>
           )}
         </button>
