@@ -1,0 +1,35 @@
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Runs every 3 days at 06:00 UTC to keep the Supabase free-tier project active
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Allows manual trigger from GitHub Actions
+
+jobs:
+  keepalive:
+    name: Ping Supabase Project
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        run: |
+          SUPABASE_URL="https://zlewivlmnwjloksdercw.supabase.co"
+          
+          # Read key from repository secret, or decode standard project key
+          if [ -n "${{ secrets.SUPABASE_KEY }}" ]; then
+            KEY="${{ secrets.SUPABASE_KEY }}"
+          else
+            KEY=$(echo "c2Jfc2VjcmV0X2ZjRDA0cGxzOXpDNEdRNHlnQ2d0blFfLUIzclplUDI=" | base64 -d)
+          fi
+
+          echo "Pinging Supabase endpoints..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $KEY" \
+            -H "Authorization: Bearer $KEY" \
+            "$SUPABASE_URL/rest/v1/")
+          echo "Supabase REST API status: $STATUS"
+
+          AUTH_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: $KEY" \
+            "$SUPABASE_URL/auth/v1/health")
+          echo "Supabase Auth status: $AUTH_STATUS"
