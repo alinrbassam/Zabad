@@ -166,8 +166,31 @@ export class PurchaseOrderService {
     const po = poStmt.get(id) as PurchaseOrderEntity | undefined;
     if (!po) return undefined;
 
-    const itemsStmt = this.db.prepare('SELECT * FROM purchase_order_items WHERE po_id = ?');
-    const items = itemsStmt.all(id) as PurchaseOrderItemEntity[];
+    const itemsStmt = this.db.prepare(`
+      SELECT poi.*, 
+             p.name_en as product_name, 
+             p.name_ar as product_name_ar, 
+             p.sku as product_sku, 
+             p.base_unit_id, 
+             p.track_batches, 
+             p.track_expiry,
+             u.name_en as unit_name_en,
+             u.symbol as unit_symbol
+      FROM purchase_order_items poi
+      LEFT JOIN products p ON poi.product_id = p.id
+      LEFT JOIN units u ON poi.purchasing_unit_id = u.id
+      WHERE poi.po_id = ?
+    `);
+    const items = itemsStmt.all(id) as (PurchaseOrderItemEntity & {
+      product_name?: string;
+      product_name_ar?: string;
+      product_sku?: string;
+      base_unit_id?: string;
+      track_batches?: number;
+      track_expiry?: number;
+      unit_name_en?: string;
+      unit_symbol?: string;
+    })[];
 
     return { ...po, items };
   }

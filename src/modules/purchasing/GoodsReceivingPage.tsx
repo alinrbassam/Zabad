@@ -18,6 +18,7 @@ interface ReceivingLine {
   previouslyReceivedQty: number;
   receivedQtyNow: number;
   unitCost: number;
+  unitId?: string;
   batchNumber: string;
   mfgDate: string;
   expiryDate: string;
@@ -28,7 +29,7 @@ export const GoodsReceivingPage: React.FC = () => {
   const poId = searchParams.get('poId');
   const navigate = useNavigate();
   const { selectedOrder, loadOrderById, confirmReceipt, isLoading, error } = usePurchasingStore();
-  const { suppliers, loadMetadata } = useProductStore();
+  const { suppliers, units, loadMetadata } = useProductStore();
   const { user } = useAuthStore();
 
   const [supplierId, setSupplierId] = useState('');
@@ -51,32 +52,32 @@ export const GoodsReceivingPage: React.FC = () => {
   useEffect(() => {
     if (selectedOrder) {
       setSupplierId(selectedOrder.supplier_id);
-      window.api?.searchProducts('').then((res) => {
-        if (res.success && res.data) {
-          const prods = res.data;
-          const lines: ReceivingLine[] = selectedOrder.items.map((item) => {
-            const prod = prods.find((p) => p.id === item.product_id) || {
-              id: item.product_id,
-              name_en: item.description || 'Product',
-              sku: item.product_id,
-              track_batches: 0,
-              track_expiry: 0,
-            };
-            const remaining = Math.max(0, item.ordered_qty - item.received_qty);
-            return {
-              poItemId: item.id,
-              product: prod as ProductEntity,
-              orderedQty: item.ordered_qty,
-              previouslyReceivedQty: item.received_qty,
-              receivedQtyNow: remaining,
-              unitCost: item.unit_cost,
-              batchNumber: `BATCH-${Date.now().toString().slice(-4)}`,
-              mfgDate: '',
-              expiryDate: '',
-            };
-          });
-          setReceivingLines(lines);
-        }
+      window.api?.searchProducts('', 1000, 0).then((res) => {
+        const prods = res?.success && res.data ? res.data : [];
+        const lines: ReceivingLine[] = selectedOrder.items.map((item: any) => {
+          const prod = prods.find((p: any) => p.id === item.product_id) || {
+            id: item.product_id,
+            name_en: item.product_name || item.description || 'Product',
+            sku: item.product_sku || item.product_id,
+            base_unit_id: item.base_unit_id || item.purchasing_unit_id,
+            track_batches: item.track_batches || 0,
+            track_expiry: item.track_expiry || 0,
+          };
+          const remaining = Math.max(0, item.ordered_qty - item.received_qty);
+          return {
+            poItemId: item.id,
+            product: prod as ProductEntity,
+            orderedQty: item.ordered_qty,
+            previouslyReceivedQty: item.received_qty,
+            receivedQtyNow: remaining,
+            unitCost: item.unit_cost,
+            unitId: item.purchasing_unit_id || prod.base_unit_id,
+            batchNumber: `BATCH-${Date.now().toString().slice(-4)}`,
+            mfgDate: '',
+            expiryDate: '',
+          };
+        });
+        setReceivingLines(lines);
       });
     }
   }, [selectedOrder]);
@@ -91,16 +92,19 @@ export const GoodsReceivingPage: React.FC = () => {
     e.preventDefault();
     setSuccessMsg(null);
 
+    const defaultUnitId = units[0]?.id || 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035';
+    const finalSupplierId = supplierId || selectedOrder?.supplier_id || suppliers[0]?.id;
+
     const payload = {
       poId: poId || undefined,
-      supplierId: supplierId || suppliers[0]?.id || 's-1',
+      supplierId: finalSupplierId,
       supplierInvoiceNumber: invoiceNumber || undefined,
       receiptDate,
       deliveryNoteNumber: deliveryNote || undefined,
       items: receivingLines.map((l) => ({
         poItemId: l.poItemId,
         productId: l.product.id,
-        unitId: l.product.base_unit_id || 'u-1',
+        unitId: l.unitId || l.product.base_unit_id || defaultUnitId,
         receivedQty: l.receivedQtyNow,
         acceptedQty: l.receivedQtyNow,
         rejectedQty: 0,

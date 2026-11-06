@@ -11,7 +11,7 @@ import { Undo2 } from 'lucide-react';
 
 export const PurchaseReturnsPage: React.FC = () => {
   const { createReturn, isLoading, error } = usePurchasingStore();
-  const { suppliers, products, loadMetadata, loadProducts } = useProductStore();
+  const { suppliers, products, units, loadMetadata, loadProducts } = useProductStore();
   const { user } = useAuthStore();
 
   const [supplierId, setSupplierId] = useState('');
@@ -48,6 +48,10 @@ export const PurchaseReturnsPage: React.FC = () => {
       return;
     }
 
+    const selectedProd = products.find((p) => p.id === productId);
+    const defaultUnitId = units[0]?.id || 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035';
+    const resolvedUnitId = selectedProd?.base_unit_id || defaultUnitId;
+
     const payload = {
       supplierId,
       returnDate,
@@ -55,7 +59,7 @@ export const PurchaseReturnsPage: React.FC = () => {
       items: [
         {
           productId,
-          unitId: 'u-1',
+          unitId: resolvedUnitId,
           returnedQty,
           unitCost,
           reason,

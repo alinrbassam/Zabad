@@ -36,11 +36,26 @@ export class PurchaseReturnService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    let supplierId = input.supplierId;
+    try {
+      const supExists = this.db.prepare('SELECT id FROM suppliers WHERE id = ?').get(supplierId);
+      if (!supExists) {
+        const firstSup = this.db
+          .prepare('SELECT id FROM suppliers WHERE is_active = 1 LIMIT 1')
+          .get() as { id: string } | undefined;
+        if (firstSup?.id) {
+          supplierId = firstSup.id;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
     this.db.transaction(() => {
       insertReturn.run(
         returnId,
         returnNumber,
-        input.supplierId,
+        supplierId,
         input.receiptId || null,
         input.returnDate,
         input.reason,
@@ -50,12 +65,42 @@ export class PurchaseReturnService {
       );
 
       for (const item of input.items) {
+        let resolvedUnitId = item.unitId;
+        try {
+          const checkUnit = (uid: string | undefined | null) => {
+            if (!uid || uid === 'u-1') return false;
+            return !!this.db.prepare('SELECT id FROM units WHERE id = ?').get(uid);
+          };
+
+          if (!checkUnit(resolvedUnitId)) {
+            const prod = this.db
+              .prepare('SELECT base_unit_id FROM products WHERE id = ?')
+              .get(item.productId) as { base_unit_id?: string } | undefined;
+            if (checkUnit(prod?.base_unit_id)) {
+              resolvedUnitId = prod!.base_unit_id!;
+            }
+          }
+
+          if (!checkUnit(resolvedUnitId)) {
+            const fallbackUnit = this.db
+              .prepare(
+                "SELECT id FROM units WHERE is_active = 1 ORDER BY CASE WHEN code = 'pcs' THEN 1 ELSE 2 END LIMIT 1",
+              )
+              .get() as { id: string } | undefined;
+            if (fallbackUnit?.id) {
+              resolvedUnitId = fallbackUnit.id;
+            }
+          }
+        } catch {
+          // ignore
+        }
+
         insertItem.run(
           crypto.randomUUID(),
           returnId,
           item.productId,
           item.batchId || null,
-          item.unitId,
+          resolvedUnitId,
           item.returnedQty,
           item.unitCost,
           item.reason || null,
