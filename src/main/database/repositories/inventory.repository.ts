@@ -140,7 +140,7 @@ export class InventoryRepository {
         FROM inventory_movements m
         LEFT JOIN products p ON m.product_id = p.id
         LEFT JOIN units u ON m.unit_id = u.id
-        WHERE m.product_id = ?
+        WHERE m.product_id = ? AND (m.deleted_at IS NULL OR m.deleted_at = '')
         ORDER BY m.created_at DESC
         LIMIT ?
       `);
@@ -151,10 +151,70 @@ export class InventoryRepository {
       FROM inventory_movements m
       LEFT JOIN products p ON m.product_id = p.id
       LEFT JOIN units u ON m.unit_id = u.id
+      WHERE (m.deleted_at IS NULL OR m.deleted_at = '')
       ORDER BY m.created_at DESC
       LIMIT ?
     `);
     return stmt.all(limit) as InventoryMovementEntity[];
+  }
+
+  public deleteMovement(movementId: string, revertBalance = false): InventoryMovementEntity | null {
+    const movement = this.db
+      .prepare(
+        "SELECT * FROM inventory_movements WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')",
+      )
+      .get(movementId) as InventoryMovementEntity | undefined;
+
+    if (!movement) return null;
+
+    const now = new Date().toISOString();
+
+    const tx = this.db.transaction(() => {
+      if (revertBalance && movement.product_id) {
+        const balance = this.db
+          .prepare('SELECT * FROM inventory_balances WHERE product_id = ?')
+          .get(movement.product_id) as InventoryBalanceEntity | undefined;
+
+        if (balance) {
+          const newOnHand = Math.max(
+            0,
+            Number(balance.quantity_on_hand || 0) - Number(movement.quantity_change || 0),
+          );
+          const newAvail = Math.max(0, newOnHand - Number(balance.reserved_quantity || 0));
+          const damagedRev =
+            movement.movement_type === 'Damaged stock'
+              ? Math.abs(Number(movement.quantity_change || 0))
+              : 0;
+          const expiredRev =
+            movement.movement_type === 'Expired stock'
+              ? Math.abs(Number(movement.quantity_change || 0))
+              : 0;
+
+          this.db
+            .prepare(
+              `UPDATE inventory_balances SET
+                quantity_on_hand = ?,
+                available_quantity = ?,
+                damaged_quantity = MAX(0, damaged_quantity - ?),
+                expired_quantity = MAX(0, expired_quantity - ?),
+                updated_at = ?
+               WHERE product_id = ?`,
+            )
+            .run(newOnHand, newAvail, damagedRev, expiredRev, now, movement.product_id);
+        }
+      }
+
+      this.db
+        .prepare('UPDATE inventory_movements SET deleted_at = ?, updated_at = ? WHERE id = ?')
+        .run(now, now, movementId);
+    });
+
+    tx();
+    logger.info(
+      'InventoryRepository',
+      `Soft-deleted movement ${movementId} (product=${movement.product_id}, revertBalance=${revertBalance})`,
+    );
+    return movement;
   }
 
   public reconcileBalancesFromLedger(): void {
@@ -166,6 +226,7 @@ export class InventoryRepository {
         INSERT INTO inventory_balances (product_id, quantity_on_hand, available_quantity, updated_at)
         SELECT product_id, SUM(quantity_change) as total_on_hand, SUM(quantity_change) as total_avail, CURRENT_TIMESTAMP
         FROM inventory_movements
+        WHERE (deleted_at IS NULL OR deleted_at = '')
         GROUP BY product_id
       `);
       stmt.run();

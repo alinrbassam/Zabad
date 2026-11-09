@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useLanguageStore } from '../../stores/useLanguageStore';
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -25,6 +26,13 @@ import {
 export const Sidebar: React.FC = () => {
   const { pathname } = useLocation();
   const { logout, user, activeRoleMode, setRoleMode, setManagerUnlockModalOpen } = useAuthStore();
+  const { language } = useLanguageStore();
+
+  const pickLabel = (enAr: string, frAr: string, arOnly: string) =>
+    language === 'ar' ? arOnly : language === 'fr' ? frAr : enAr;
+
+  const bilingualDir = language === 'ar' ? 'rtl' : 'ltr';
+
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
     try {
       const saved = localStorage.getItem('zabad_sidebar_collapsed');
@@ -66,25 +74,25 @@ export const Sidebar: React.FC = () => {
   const navSections = [
     {
       id: 'sell',
-      label: 'Vente (POS) - نقطة البيع',
+      label: pickLabel('Sales (POS) - نقطة البيع', 'Vente (POS) - نقطة البيع', 'نقطة البيع'),
       icon: ShoppingCart,
       color: 'text-sky-400',
       items: [
         {
           id: 'pos-terminal',
-          label: 'Caisse POS - الصندوق',
+          label: pickLabel('POS Register - الصندوق', 'Caisse POS - الصندوق', 'الصندوق'),
           icon: ShoppingCart,
           path: '/pos',
         },
         {
           id: 'pos-debts',
-          label: 'Dettes Clients - ديون الزبائن',
+          label: pickLabel('Customer Debts - ديون الزبائن', 'Dettes Clients - ديون الزبائن', 'ديون الزبائن'),
           icon: HandCoins,
           path: '/pos/debts',
         },
         {
           id: 'sales-history',
-          label: 'Historique Ventes - سجل المبيعات',
+          label: pickLabel('Sales History - سجل المبيعات', 'Historique Ventes - سجل المبيعات', 'سجل المبيعات'),
           icon: History,
           path: '/pos/sales',
         },
@@ -92,19 +100,23 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'finance',
-      label: 'Finances - المالية والمصاريف',
+      label: pickLabel('Finances - المالية والمصاريف', 'Finances - المالية والمصاريف', 'المالية والمصاريف'),
       icon: Receipt,
       color: 'text-rose-400',
       items: [
         {
           id: 'expenses',
-          label: 'Dépenses - المصاريف',
+          label: pickLabel('Expenses - المصاريف', 'Dépenses - المصاريف', 'المصاريف'),
           icon: Receipt,
           path: '/expenses',
         },
         {
           id: 'financial-report',
-          label: 'Rapport P&L - تقرير الأرباح والخسائر',
+          label: pickLabel(
+            'P&L Report - تقرير الأرباح والخسائر',
+            'Rapport P&L - تقرير الأرباح والخسائر',
+            'تقرير الأرباح والخسائر',
+          ),
           icon: BarChart2,
           path: '/reports/financial',
         },
@@ -112,25 +124,25 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'buy',
-      label: 'Achats - المشتريات',
+      label: pickLabel('Purchases - المشتريات', 'Achats - المشتريات', 'المشتريات'),
       icon: Truck,
       color: 'text-emerald-400',
       items: [
         {
           id: 'direct-purchase',
-          label: 'Achat Direct - شراء مباشر',
+          label: pickLabel('Direct Purchase - شراء مباشر', 'Achat Direct - شراء مباشر', 'شراء مباشر'),
           icon: Store,
           path: '/purchasing/direct',
         },
         {
           id: 'purchase-orders',
-          label: 'Bons de Commande - أوامر الشراء',
+          label: pickLabel('Purchase Orders - أوامر الشراء', 'Bons de Commande - أوامر الشراء', 'أوامر الشراء'),
           icon: Truck,
           path: '/purchasing/orders',
         },
         {
           id: 'purchasing-history',
-          label: 'Historique Achats - سجل المشتريات',
+          label: pickLabel('Purchase History - سجل المشتريات', 'Historique Achats - سجل المشتريات', 'سجل المشتريات'),
           icon: History,
           path: '/purchasing/history',
         },
@@ -138,37 +150,37 @@ export const Sidebar: React.FC = () => {
     },
     {
       id: 'inventory',
-      label: 'Stock - المخزون والمنتجات',
+      label: pickLabel('Inventory - المخزون والمنتجات', 'Stock - المخزون والمنتجات', 'المخزون والمنتجات'),
       icon: Package,
       color: 'text-amber-400',
       items: [
         {
           id: 'suppliers',
-          label: '1. Fournisseurs - الموردين',
+          label: pickLabel('1. Suppliers - الموردين', '1. Fournisseurs - الموردين', '1. الموردين'),
           icon: Users,
           path: '/inventory/suppliers',
         },
         {
           id: 'categories',
-          label: '2. Catégories - الأقسام',
+          label: pickLabel('2. Categories - الأقسام', '2. Catégories - الأقسام', '2. الأقسام'),
           icon: FolderTree,
           path: '/inventory/categories',
         },
         {
           id: 'product-new',
-          label: '3. Nouvel Article - إضافة صنف',
+          label: pickLabel('3. New Product - إضافة صنف', '3. Nouvel Article - إضافة صنف', '3. إضافة صنف'),
           icon: PlusCircle,
           path: '/inventory/products/new',
         },
         {
           id: 'products-list',
-          label: '4. Produits & Stock - المنتجات',
+          label: pickLabel('4. Products & Stock - المنتجات', '4. Produits & Stock - المنتجات', '4. المنتجات'),
           icon: Package,
           path: '/inventory/products',
         },
         {
           id: 'adjustments',
-          label: '5. Ajustements - تسوية المخزون',
+          label: pickLabel('5. Adjustments - تسوية المخزون', '5. Ajustements - تسوية المخزون', '5. تسوية المخزون'),
           icon: Sliders,
           path: '/inventory/adjustments',
         },
@@ -217,11 +229,24 @@ export const Sidebar: React.FC = () => {
     setOpenGroups((prev) => ({ ...prev, [groupId]: !prev[groupId] }));
   };
 
+  const overviewLabel = pickLabel('Overview - نظرة عامة', 'Aperçu - نظرة عامة', 'نظرة عامة');
+  const settingsLabel = pickLabel('Settings - الإعدادات', 'Paramètres - الإعدادات', 'الإعدادات');
+  const lockCashierLabel = pickLabel(
+    'Lock to Cashier - قفل إلى الكاشير',
+    'Verrouiller en Caisse - قفل إلى الكاشير',
+    'قفل إلى الكاشير',
+  );
+  const resetCashierLabel = pickLabel(
+    'Reset Cashier - إعادة ضبط الكاشير',
+    'Réinitialiser la Caisse - إعادة ضبط الكاشير',
+    'إعادة ضبط الكاشير',
+  );
+
   return (
     <aside
       className={`${
         isCollapsed ? 'w-16' : 'w-80'
-      } bg-[#0B1120] text-slate-300 flex flex-col h-screen border-r border-slate-800/80 select-none transition-all duration-300 shrink-0`}
+      } bg-[#0B1120] text-slate-300 flex flex-col h-screen border-r rtl:border-r-0 rtl:border-l border-slate-800/80 select-none transition-all duration-300 shrink-0`}
     >
       {/* App Branding & Collapse Toggle */}
       <div
@@ -239,10 +264,10 @@ export const Sidebar: React.FC = () => {
                 <span>Khalil POS</span>
                 <span className="text-[9px] bg-cyan-500/20 text-cyan-400 font-mono px-1 py-0.2 rounded">v2</span>
               </h2>
-              <span className="text-[10px] text-cyan-400/90 font-medium truncate block" dir="ltr">
+              <span className="text-[10px] text-cyan-400/90 font-medium truncate block" dir={bilingualDir}>
                 {activeRoleMode === 'cashier'
-                  ? 'Caisse - كاشير'
-                  : 'Gérant - مدير'}
+                  ? pickLabel('Cashier - كاشير', 'Caisse - كاشير', 'كاشير')
+                  : pickLabel('Manager - مدير', 'Gérant - مدير', 'مدير')}
               </span>
             </div>
           )}
@@ -251,7 +276,11 @@ export const Sidebar: React.FC = () => {
         <button
           onClick={toggleCollapse}
           className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-slate-200 rounded-lg transition-colors shrink-0"
-          title={isCollapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
+          title={
+            isCollapsed
+              ? pickLabel('Expand sidebar', 'Développer la barre latérale', 'توسيع القائمة الجانبية')
+              : pickLabel('Collapse sidebar', 'Réduire la barre latérale', 'طي القائمة الجانبية')
+          }
         >
           {isCollapsed ? (
             <ChevronRight className="h-4 w-4 rtl:rotate-180" />
@@ -268,7 +297,7 @@ export const Sidebar: React.FC = () => {
             <NavLink
               to="/"
               end
-              title="Aperçu - نظرة عامة"
+              title={overviewLabel}
               className={({ isActive }) =>
                 `flex items-center ${
                   isCollapsed ? 'justify-center p-2.5' : 'space-x-3 rtl:space-x-reverse px-3 py-2'
@@ -280,7 +309,11 @@ export const Sidebar: React.FC = () => {
               }
             >
               <LayoutDashboard className="h-4 w-4 text-cyan-400 shrink-0" />
-              {!isCollapsed && <span className="truncate" dir="ltr">Aperçu - نظرة عامة</span>}
+              {!isCollapsed && (
+                <span className="truncate" dir={bilingualDir}>
+                  {overviewLabel}
+                </span>
+              )}
             </NavLink>
 
             <div className="border-b border-slate-800/60 my-2" />
@@ -327,7 +360,9 @@ export const Sidebar: React.FC = () => {
               >
                 <div className="flex items-center space-x-2.5 rtl:space-x-reverse min-w-0">
                   <SectionIcon className={`h-4 w-4 ${sec.color} shrink-0`} />
-                  <span className="text-xs font-semibold truncate" dir="ltr">{sec.label}</span>
+                  <span className="text-xs font-semibold truncate" dir={bilingualDir}>
+                    {sec.label}
+                  </span>
                 </div>
                 {isOpen ? (
                   <ChevronDown className="h-3.5 w-3.5 text-slate-500 shrink-0" />
@@ -353,7 +388,9 @@ export const Sidebar: React.FC = () => {
                         }`}
                       >
                         <ItemIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span className="truncate" dir="ltr">{item.label}</span>
+                        <span className="truncate" dir={bilingualDir}>
+                          {item.label}
+                        </span>
                       </NavLink>
                     );
                   })}
@@ -368,7 +405,7 @@ export const Sidebar: React.FC = () => {
             <div className="border-b border-slate-800 my-2" />
             <NavLink
               to="/settings"
-              title="Paramètres - الإعدادات"
+              title={settingsLabel}
               className={({ isActive }) =>
                 `flex items-center ${
                   isCollapsed ? 'justify-center p-2.5' : 'space-x-3 rtl:space-x-reverse px-3 py-2'
@@ -380,7 +417,11 @@ export const Sidebar: React.FC = () => {
               }
             >
               <Settings className="h-4 w-4 text-slate-400 shrink-0" />
-              {!isCollapsed && <span className="truncate" dir="ltr">Paramètres - الإعدادات</span>}
+              {!isCollapsed && (
+                <span className="truncate" dir={bilingualDir}>
+                  {settingsLabel}
+                </span>
+              )}
             </NavLink>
           </>
         )}
@@ -391,8 +432,11 @@ export const Sidebar: React.FC = () => {
         {/* Quick Role Switcher Button */}
         {!isCollapsed ? (
           <div className="bg-slate-800/80 p-1.5 rounded-xl border border-slate-700/60 flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-400 pl-1 rtl:pl-0 rtl:pr-1" dir="ltr">
-              Mode - الوضع:
+            <span
+              className="text-[11px] font-semibold text-slate-400 pl-1 rtl:pl-0 rtl:pr-1"
+              dir={bilingualDir}
+            >
+              {pickLabel('Mode - الوضع:', 'Mode - الوضع:', 'الوضع:')}
             </span>
             <button
               onClick={handleRoleSwitch}
@@ -401,11 +445,11 @@ export const Sidebar: React.FC = () => {
                   ? 'bg-sky-600 text-white shadow-xs'
                   : 'bg-emerald-600 text-white shadow-xs'
               }`}
-              dir="ltr"
+              dir={bilingualDir}
             >
               {activeRoleMode === 'cashier'
-                ? '🛒 Caisse - كاشير'
-                : '👑 Gérant - مدير'}
+                ? pickLabel('🛒 Cashier - كاشير', '🛒 Caisse - كاشير', '🛒 كاشير')
+                : pickLabel('👑 Manager - مدير', '👑 Gérant - مدير', '👑 مدير')}
             </button>
           </div>
         ) : (
@@ -416,7 +460,11 @@ export const Sidebar: React.FC = () => {
                 ? 'bg-sky-600 text-white shadow-xs'
                 : 'bg-emerald-600 text-white shadow-xs'
             }`}
-            title={activeRoleMode === 'cashier' ? 'Passer en Mode Gérant' : 'Passer en Mode Caisse'}
+            title={
+              activeRoleMode === 'cashier'
+                ? pickLabel('Switch to Manager Mode', 'Passer en Mode Gérant', 'التبديل إلى وضع المدير')
+                : pickLabel('Switch to Cashier Mode', 'Passer en Mode Caisse', 'التبديل إلى وضع الكاشير')
+            }
           >
             {activeRoleMode === 'cashier' ? '🛒' : '👑'}
           </button>
@@ -425,10 +473,14 @@ export const Sidebar: React.FC = () => {
         {user && !isCollapsed && (
           <div className="px-2 py-1 flex items-center justify-between text-xs text-slate-400">
             <span className="truncate font-semibold text-slate-300">
-              {user.full_name || user.username}
+              {user.id === 'default-cashier-id'
+                ? pickLabel('Main Register', 'Caisse Principale', 'الصندوق الرئيسي')
+                : user.full_name || user.username}
             </span>
             <span className="text-[10px] bg-slate-800 px-2 py-0.5 rounded text-sky-400 uppercase">
-              {activeRoleMode}
+              {activeRoleMode === 'cashier'
+                ? pickLabel('CASHIER', 'CAISSIER', 'كاشير')
+                : pickLabel('MANAGER', 'GÉRANT', 'مدير')}
             </span>
           </div>
         )}
@@ -439,18 +491,12 @@ export const Sidebar: React.FC = () => {
           className={`w-full flex items-center justify-center ${
             isCollapsed ? 'p-2' : 'space-x-2 rtl:space-x-reverse px-3 py-2'
           } rounded-lg text-xs font-bold text-rose-400 hover:bg-rose-950/30 hover:text-rose-300 transition-colors`}
-          title={
-            activeRoleMode === 'manager'
-              ? 'Verrouiller en Caisse - قفل إلى الكاشير'
-              : 'Réinitialiser la Caisse - إعادة ضبط الكاشير'
-          }
+          title={activeRoleMode === 'manager' ? lockCashierLabel : resetCashierLabel}
         >
           <LogOut className="h-3.5 w-3.5 shrink-0" />
           {!isCollapsed && (
-            <span className="truncate" dir="ltr">
-              {activeRoleMode === 'manager'
-                ? 'Verrouiller en Caisse - قفل إلى الكاشير'
-                : 'Réinitialiser la Caisse - إعادة ضبط الكاشير'}
+            <span className="truncate" dir={bilingualDir}>
+              {activeRoleMode === 'manager' ? lockCashierLabel : resetCashierLabel}
             </span>
           )}
         </button>
@@ -459,5 +505,3 @@ export const Sidebar: React.FC = () => {
   );
 };
 export default Sidebar;
-
-

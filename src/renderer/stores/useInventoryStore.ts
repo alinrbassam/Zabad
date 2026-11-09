@@ -24,6 +24,7 @@ interface InventoryState {
   loadMovements: (productId?: string) => Promise<void>;
   loadExpiringBatches: (daysWindow?: number) => Promise<void>;
   createAdjustment: (input: StockAdjustmentInput, userId?: string) => Promise<boolean>;
+  deleteMovement: (id: string, userId?: string, revertBalance?: boolean) => Promise<boolean>;
 }
 
 export const useInventoryStore = create<InventoryState>((set, get) => ({
@@ -86,6 +87,29 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           return true;
         } else {
           set({ error: res.error?.message || 'Stock adjustment failed' });
+          return false;
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteMovement: async (id: string, userId?: string, revertBalance = false) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.deleteStockMovement) {
+        const res = await window.api.deleteStockMovement(id, userId, revertBalance);
+        if (res.success) {
+          await get().loadSummary();
+          await get().loadMovements();
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Failed deleting stock movement' });
           return false;
         }
       }

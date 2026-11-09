@@ -7,6 +7,7 @@ import { DatabaseConnection } from '../database/connection';
 import { LicensingService } from './licensing.service';
 import { SettingsRepository } from '../database/repositories/settings.repository';
 import { BusinessRepository } from '../database/repositories/business.repository';
+import { ensureMovementDeleteColumns } from '../database/migrations/v11_movement_soft_delete';
 import { IPC_CHANNELS } from '../../shared/ipc/channels';
 
 export const DEFAULT_SUPABASE_URL = 'https://zlewivlmnwjloksdercw.supabase.co';
@@ -359,6 +360,9 @@ export class SupabaseSyncService {
 
       // 5. Restore local machine license records into the new database
       this.licensingService.restoreLicenseRows(localLicenseRows);
+
+      // 5b. Ensure newer schema columns exist on hot-swapped snapshot
+      ensureMovementDeleteColumns(this.db);
 
       // 6. Update local configuration status
       const now = new Date().toISOString();

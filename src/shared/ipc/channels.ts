@@ -67,6 +67,7 @@ export const IPC_CHANNELS = {
   STOCK_GET_SUMMARY: 'stock:get_summary',
   STOCK_LIST_MOVEMENTS: 'stock:list_movements',
   STOCK_CREATE_ADJUSTMENT: 'stock:create_adjustment',
+  STOCK_DELETE_MOVEMENT: 'stock:delete_movement',
 
   BATCHES_LIST: 'batches:list',
   EXPIRY_LIST: 'expiry:list',

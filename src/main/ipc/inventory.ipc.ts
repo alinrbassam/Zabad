@@ -341,6 +341,22 @@ export function registerInventoryIpcHandlers(db: Database.Database): void {
     },
   );
 
+  ipcMain.handle(
+    IPC_CHANNELS.STOCK_DELETE_MOVEMENT,
+    async (_, id: string, userId?: string, revertBalance = false): Promise<ApiResponse> => {
+      try {
+        inventoryService.deleteMovement(id, userId, revertBalance);
+        SupabaseSyncService.triggerDebouncedSync(1000);
+        return { success: true, data: true };
+      } catch (err) {
+        return {
+          success: false,
+          error: { code: 'STOCK_DELETE_MOVEMENT_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
   // Batches & Expiry
   ipcMain.handle(IPC_CHANNELS.BATCHES_LIST, async (_, productId: string): Promise<ApiResponse> => {
     try {

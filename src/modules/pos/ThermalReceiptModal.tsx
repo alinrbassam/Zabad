@@ -107,7 +107,9 @@ export const ThermalReceiptModal: React.FC<Props> = ({
                 const itemName = language === 'ar' 
                   ? (item.name_ar || item.name_en || item.product_id)
                   : (item.name_en || item.name_ar || item.product_id);
-                const unitLabel = item.unit_name_ar || item.unit_symbol || item.unit_code || (language === 'ar' ? 'كغ' : 'kg');
+                const unitLabel = language === 'ar'
+                  ? (item.unit_name_ar || item.unit_symbol || 'قطعة')
+                  : (item.unit_symbol || item.unit_code || 'pcs');
 
                 const pcWeight = Number(item.piece_weight) || Number(item.product_piece_weight) || 0;
                 const pcsPerPack = Number(item.pieces_per_pack) || Number(item.product_pieces_per_pack) || 1;
@@ -120,7 +122,7 @@ export const ThermalReceiptModal: React.FC<Props> = ({
                   if (isPieceMode) {
                     qtyDisplay = `${item.quantity} ${language === 'ar' ? 'حبة' : 'pcs'}`;
                   } else {
-                    qtyDisplay = `${item.quantity} ${unitLabel || (language === 'ar' ? 'كرتون' : 'packs')}`;
+                    qtyDisplay = `${item.quantity} ${language === 'ar' ? 'كرتون' : 'pack(s)'}`;
                   }
                 }
 

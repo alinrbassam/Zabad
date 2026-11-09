@@ -120,6 +120,18 @@ export class InventoryService {
     };
   }
 
+  public deleteMovement(id: string, userId?: string, revertBalance = false): void {
+    const deleted = this.inventoryRepo.deleteMovement(id, revertBalance);
+    if (!deleted) throw new Error('Stock movement entry not found');
+
+    this.auditRepo.logAction({
+      user_id: userId,
+      action: 'STOCK_MOVEMENT_DELETED',
+      module: 'Inventory',
+      details: `Deleted stock movement #${id} (${deleted.movement_type}, qty ${deleted.quantity_change}, revertBalance=${revertBalance})`,
+    });
+  }
+
   public reconcileLedger(): void {
     this.inventoryRepo.reconcileBalancesFromLedger();
   }

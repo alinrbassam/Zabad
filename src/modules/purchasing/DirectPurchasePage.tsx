@@ -11,7 +11,6 @@ import { Button } from '@components/ui/Button';
 import { Alert } from '@components/ui/Alert';
 import { Dialog } from '@components/ui/Dialog';
 import { Store, Plus, Trash2, PlusCircle } from 'lucide-react';
-import { formatUnitDisplayName } from '@utils/unit';
 
 interface DirectLine {
   product: ProductEntity;
@@ -40,7 +39,6 @@ export const DirectPurchasePage: React.FC = () => {
   const [newProductNameEn, setNewProductNameEn] = useState('');
   const [newProductNameAr, setNewProductNameAr] = useState('');
   const [newProductCategory, setNewProductCategory] = useState('');
-  const [newProductUnit, setNewProductUnit] = useState('');
   const [newProductCost, setNewProductCost] = useState<number | string>(0);
   const [newProductPrice, setNewProductPrice] = useState<number | string>(0);
   const [newProductSku, setNewProductSku] = useState('');
@@ -63,7 +61,6 @@ export const DirectPurchasePage: React.FC = () => {
     setNewProductNameEn(prefillName || productQuery || '');
     setNewProductNameAr('');
     setNewProductCategory(categories[0]?.id || '');
-    setNewProductUnit(units[0]?.id || '');
     setNewProductCost(0);
     setNewProductPrice(0);
     setNewProductSku(`SKU-${Math.floor(100000 + Math.random() * 900000)}`);
@@ -80,9 +77,9 @@ export const DirectPurchasePage: React.FC = () => {
     }
 
     const catId = newProductCategory || categories[0]?.id;
-    const unitId = newProductUnit || units[0]?.id;
-    if (!catId || !unitId) {
-      setQuickAddError('Category and Unit are required. Please ensure database is seeded.');
+    const unitId = units[0]?.id || 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035';
+    if (!catId) {
+      setQuickAddError('Category is required. Please ensure database is seeded.');
       return;
     }
 
@@ -477,42 +474,22 @@ export const DirectPurchasePage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Category *
-              </label>
-              <select
-                value={newProductCategory || categories[0]?.id || ''}
-                onChange={(e) => setNewProductCategory(e.target.value)}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100"
-                required
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name_en} {c.name_ar ? `(${c.name_ar})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Base Unit *
-              </label>
-              <select
-                value={newProductUnit || units[0]?.id || ''}
-                onChange={(e) => setNewProductUnit(e.target.value)}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100"
-                required
-              >
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {formatUnitDisplayName(u)}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col space-y-1">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Category *
+            </label>
+            <select
+              value={newProductCategory || categories[0]?.id || ''}
+              onChange={(e) => setNewProductCategory(e.target.value)}
+              className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100"
+              required
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name_en} {c.name_ar ? `(${c.name_ar})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

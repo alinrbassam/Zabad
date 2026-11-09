@@ -5,13 +5,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ProductSchema, ProductInput } from '@shared/validation';
 import { useProductStore } from '@stores/useProductStore';
 import { useAuthStore } from '@stores/useAuthStore';
+import { useLanguageStore } from '@stores/useLanguageStore';
 import { ProductEntity } from '@shared/types';
 import { Input } from '@components/ui/Input';
 import { Button } from '@components/ui/Button';
 import { Card } from '@components/ui/Card';
 import { Alert } from '@components/ui/Alert';
+import { AdminPasswordConfirmModal } from '@components/auth/AdminPasswordConfirmModal';
 import { Trash2 } from 'lucide-react';
-import { formatUnitDisplayName } from '@utils/unit';
 
 export const ProductFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,7 +20,10 @@ export const ProductFormPage: React.FC = () => {
   const { categories, units, loadMetadata, createProduct, updateProduct, deleteProduct, isLoading, error } =
     useProductStore();
   const { user } = useAuthStore();
+  const { language } = useLanguageStore();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     register,
@@ -35,7 +39,7 @@ export const ProductFormPage: React.FC = () => {
       nameAr: '',
       productType: 'Weighted product',
       categoryId: '',
-      baseUnitId: '',
+      baseUnitId: 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035',
       purchaseCost: 0,
       sellingPrice: 0,
       minSellingPrice: 0,
@@ -57,6 +61,7 @@ export const ProductFormPage: React.FC = () => {
     },
   });
 
+  const watchNameEn = watch('nameEn');
   const watchPieceWeight = watch('pieceWeight') || 0;
   const watchPiecesPerPack = watch('piecesPerPack') || 1;
 
@@ -65,9 +70,11 @@ export const ProductFormPage: React.FC = () => {
   }, [loadMetadata]);
 
   useEffect(() => {
-    if (categories.length > 0) setValue('categoryId', categories[0].id);
-    if (units.length > 0) setValue('baseUnitId', units[0].id);
-  }, [categories, units, setValue]);
+    if (!id) {
+      if (categories.length > 0) setValue('categoryId', categories[0].id);
+      if (units.length > 0) setValue('baseUnitId', units[0].id);
+    }
+  }, [categories, units, id, setValue]);
 
   useEffect(() => {
     if (id && window.api?.getProductById) {
@@ -97,13 +104,24 @@ export const ProductFormPage: React.FC = () => {
     // Ensure nameAr mirrors nameEn if not explicitly set
     if (!data.nameAr) data.nameAr = data.nameEn;
 
+    const piecesPerPack =
+      isNaN(Number(data.piecesPerPack)) || Number(data.piecesPerPack) < 1
+        ? 1
+        : Math.round(Number(data.piecesPerPack));
+
+    // Automatically assign unit silently in background (Carton if packed > 1, otherwise Piece)
+    const cartonUnit = units.find((u) => u.code?.toLowerCase() === 'carton');
+    const pcsUnit = units.find((u) => u.code?.toLowerCase() === 'pcs') || units[0];
+    const autoUnitId =
+      piecesPerPack > 1 && cartonUnit
+        ? cartonUnit.id
+        : pcsUnit?.id || data.baseUnitId || 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035';
+
     const payload: ProductInput = {
       ...data,
+      baseUnitId: autoUnitId,
       pieceWeight: isNaN(Number(data.pieceWeight)) ? 0 : Number(data.pieceWeight),
-      piecesPerPack:
-        isNaN(Number(data.piecesPerPack)) || Number(data.piecesPerPack) < 1
-          ? 1
-          : Math.round(Number(data.piecesPerPack)),
+      piecesPerPack,
     };
 
     let ok = false;
@@ -150,40 +168,22 @@ export const ProductFormPage: React.FC = () => {
           />
         </Card>
 
-        {/* Section 2: Category & Unit */}
-        <Card title="2. Category & Unit">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Category *
-              </label>
-              <select
-                {...register('categoryId')}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name_en}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col space-y-1">
-              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Base Unit (Sold By) *
-              </label>
-              <select
-                {...register('baseUnitId')}
-                className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
-              >
-                {units.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {formatUnitDisplayName(u)}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {/* Section 2: Category */}
+        <Card title="2. Category">
+          <div className="flex flex-col space-y-1">
+            <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+              Category *
+            </label>
+            <select
+              {...register('categoryId')}
+              className="px-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-sky-500"
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name_en}
+                </option>
+              ))}
+            </select>
           </div>
         </Card>
 
@@ -279,19 +279,7 @@ export const ProductFormPage: React.FC = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={async () => {
-                const confirmed = window.confirm(
-                  'Are you sure you want to delete this product?\n\nÊtes-vous sûr de vouloir supprimer cet article ?'
-                );
-                if (confirmed) {
-                  const ok = await deleteProduct(id, user?.id);
-                  if (ok) {
-                    navigate('/inventory/products');
-                  } else {
-                    alert('Could not delete product.');
-                  }
-                }
-              }}
+              onClick={() => setIsDeleteModalOpen(true)}
               className="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40 flex items-center space-x-1.5 font-semibold"
             >
               <Trash2 className="h-4 w-4" />
@@ -311,6 +299,55 @@ export const ProductFormPage: React.FC = () => {
           </div>
         </div>
       </form>
+
+      {/* Admin Password Protected Delete Product Modal */}
+      <AdminPasswordConfirmModal
+        isOpen={isDeleteModalOpen}
+        title={
+          language === 'ar'
+            ? 'تأكيد حذف المنتج'
+            : language === 'fr'
+            ? 'Confirmer la suppression'
+            : 'Confirm Product Deletion'
+        }
+        message={
+          language === 'ar'
+            ? `هل أنت متأكد من حذف المنتج "${watchNameEn || 'هذا المنتج'}"؟`
+            : language === 'fr'
+            ? `Êtes-vous sûr de vouloir supprimer "${watchNameEn || 'cet article'}" ?`
+            : `Are you sure you want to delete "${watchNameEn || 'this product'}"?`
+        }
+        warningText={
+          language === 'ar'
+            ? 'سيتم حذف هذا المنتج من المخزون ونقطة البيع.'
+            : language === 'fr'
+            ? 'Cet article sera retiré du stock et de la caisse.'
+            : 'This product will be removed from inventory and the POS terminal.'
+        }
+        confirmLabel={
+          language === 'ar' ? 'نعم، حذف' : language === 'fr' ? 'Oui, supprimer' : 'Yes, Delete'
+        }
+        isLoading={isDeleting}
+        onClose={() => !isDeleting && setIsDeleteModalOpen(false)}
+        onConfirm={async () => {
+          if (!id) return;
+          setIsDeleting(true);
+          const ok = await deleteProduct(id, user?.id);
+          setIsDeleting(false);
+          if (ok) {
+            setIsDeleteModalOpen(false);
+            navigate('/inventory/products');
+          } else {
+            throw new Error(
+              language === 'ar'
+                ? 'تعذر حذف المنتج.'
+                : language === 'fr'
+                ? "Impossible de supprimer l'article."
+                : 'Could not delete product.',
+            );
+          }
+        }}
+      />
     </div>
   );
 };

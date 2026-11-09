@@ -234,6 +234,8 @@ export interface InventoryMovementEntity {
   notes?: string;
   user_id?: string;
   created_at: string;
+  updated_at?: string | null;
+  deleted_at?: string | null;
   product_name?: string;
   sku?: string;
   unit_symbol?: string;

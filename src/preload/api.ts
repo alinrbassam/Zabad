@@ -68,6 +68,7 @@ const IPC_CHANNELS = {
   STOCK_GET_SUMMARY: 'stock:get_summary',
   STOCK_LIST_MOVEMENTS: 'stock:list_movements',
   STOCK_CREATE_ADJUSTMENT: 'stock:create_adjustment',
+  STOCK_DELETE_MOVEMENT: 'stock:delete_movement',
 
   BATCHES_LIST: 'batches:list',
   EXPIRY_LIST: 'expiry:list',
@@ -354,6 +355,12 @@ export const api = {
     userId?: string,
   ): Promise<ApiResponse<InventoryMovementEntity>> =>
     ipcRenderer.invoke(IPC_CHANNELS.STOCK_CREATE_ADJUSTMENT, payload, userId),
+  deleteStockMovement: (
+    id: string,
+    userId?: string,
+    revertBalance = false,
+  ): Promise<ApiResponse> =>
+    ipcRenderer.invoke(IPC_CHANNELS.STOCK_DELETE_MOVEMENT, id, userId, revertBalance),
 
   getBatches: (productId: string): Promise<ApiResponse<BatchEntity[]>> =>
     ipcRenderer.invoke(IPC_CHANNELS.BATCHES_LIST, productId),
