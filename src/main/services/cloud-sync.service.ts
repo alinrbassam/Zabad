@@ -137,7 +137,8 @@ export class CloudSyncService {
         COALESCE(SUM(CASE WHEN payment_method IN ('MOMO', 'OM', 'Orange Money', 'MTN Momo') THEN grand_total ELSE 0 END), 0) as mobileMoneyAmount,
         COALESCE(SUM(CASE WHEN payment_method IN ('Borrow', 'Credit') THEN grand_total ELSE 0 END), 0) as creditAmount
       FROM sales_orders
-      WHERE date(created_at) BETWEEN date(?) AND date(?)
+      WHERE (deleted_at IS NULL OR deleted_at = '')
+        AND date(created_at) BETWEEN date(?) AND date(?)
         AND payment_status NOT IN ('Cancelled', 'Refunded')
     `);
     const salesData = salesStmt.get(startDate, endDate) as {
@@ -152,7 +153,8 @@ export class CloudSyncService {
       SELECT COALESCE(SUM(i.quantity * i.cost_price), 0) as cogs
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE date(s.created_at) BETWEEN date(?) AND date(?)
+      WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+        AND date(s.created_at) BETWEEN date(?) AND date(?)
         AND s.payment_status NOT IN ('Cancelled', 'Refunded')
     `);
     const cogsData = cogsStmt.get(startDate, endDate) as { cogs: number };
@@ -188,7 +190,8 @@ export class CloudSyncService {
         JOIN sales_orders s ON i.sale_id = s.id
         LEFT JOIN products p ON i.product_id = p.id
         LEFT JOIN units u ON p.base_unit_id = u.id
-        WHERE date(s.created_at) BETWEEN date(?) AND date(?)
+        WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+          AND date(s.created_at) BETWEEN date(?) AND date(?)
           AND s.payment_status NOT IN ('Cancelled', 'Refunded')
         GROUP BY COALESCE(p.id, i.product_id, i.product_name)
         ORDER BY revenue DESC
@@ -264,7 +267,8 @@ export class CloudSyncService {
       const debtStmt = this.db.prepare(`
         SELECT id, invoice_number, customer_name, customer_phone, due_date, grand_total, paid_amount, created_at
         FROM sales_orders
-        WHERE (payment_status IN ('Unpaid', 'Partially paid') OR payment_method IN ('Borrow', 'Credit'))
+        WHERE (deleted_at IS NULL OR deleted_at = '')
+          AND (payment_status IN ('Unpaid', 'Partially paid') OR payment_method IN ('Borrow', 'Credit'))
           AND payment_status NOT IN ('Cancelled', 'Refunded')
         ORDER BY created_at DESC
       `);
@@ -350,7 +354,8 @@ export class CloudSyncService {
       const recentSalesStmt = this.db.prepare(`
         SELECT id, invoice_number, grand_total, payment_method, customer_name, created_at
         FROM sales_orders
-        WHERE payment_status NOT IN ('Cancelled', 'Refunded')
+        WHERE (deleted_at IS NULL OR deleted_at = '')
+          AND payment_status NOT IN ('Cancelled', 'Refunded')
         ORDER BY created_at DESC LIMIT 15
       `);
       recentSales = recentSalesStmt.all().map((s: any) => ({

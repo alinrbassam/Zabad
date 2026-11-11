@@ -73,6 +73,15 @@ export class DatabaseConnection {
         } catch (e) {
           logger.warn('DatabaseConnection', 'Could not create .bak backup before swap', e);
         }
+        for (const sidecar of [`${this.dbPath}-wal`, `${this.dbPath}-shm`]) {
+          try {
+            if (fs.existsSync(sidecar)) {
+              fs.unlinkSync(sidecar);
+            }
+          } catch (sidecarErr) {
+            logger.warn('DatabaseConnection', `Could not remove stale sidecar ${sidecar}`, sidecarErr);
+          }
+        }
         fs.copyFileSync(newDbPath, this.dbPath);
       }
 
@@ -87,6 +96,7 @@ export class DatabaseConnection {
 
   private configure(db: Database.Database): void {
     try {
+      db.pragma('busy_timeout = 5000');
       db.pragma('journal_mode = WAL');
       db.pragma('foreign_keys = ON');
       db.pragma('synchronous = NORMAL');

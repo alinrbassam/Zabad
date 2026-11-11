@@ -1,20 +1,31 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePurchasingStore } from '@stores/usePurchasingStore';
+import { useAuthStore } from '@stores/useAuthStore';
+import { useLanguageStore } from '@stores/useLanguageStore';
 import { Table, Column } from '@components/ui/Table';
 import { Button } from '@components/ui/Button';
 import { Card } from '@components/ui/Card';
 import { Badge } from '@components/ui/Badge';
 import { SearchBox } from '@components/ui/SearchBox';
+import { Alert } from '@components/ui/Alert';
+import { AdminPasswordConfirmModal } from '@components/auth/AdminPasswordConfirmModal';
 import { PurchaseOrderEntity } from '@shared/types';
-import { Plus, Eye, Truck } from 'lucide-react';
+import { Plus, Eye, Truck, Trash2 } from 'lucide-react';
 import { formatDate } from '@utils/date';
 
 export const PurchaseOrdersPage: React.FC = () => {
   const navigate = useNavigate();
-  const { orders, loadOrders } = usePurchasingStore();
+  const { orders, loadOrders, deleteOrder, error } = usePurchasingStore();
+  const { user } = useAuthStore();
+  const { language } = useLanguageStore();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [poToDelete, setPoToDelete] = useState<(PurchaseOrderEntity & { supplier_name?: string }) | null>(
+    null,
+  );
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrders(search, statusFilter);
@@ -84,6 +95,22 @@ export const PurchaseOrdersPage: React.FC = () => {
               Receive
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setPoToDelete(po)}
+            title={
+              language === 'ar'
+                ? 'حذف أمر الشراء'
+                : language === 'fr'
+                ? 'Supprimer la commande'
+                : 'Delete Purchase Order'
+            }
+            className="hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-500 hover:text-rose-600 p-1.5 rounded-lg transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
@@ -107,6 +134,9 @@ export const PurchaseOrdersPage: React.FC = () => {
           <span>New Purchase Order</span>
         </Button>
       </div>
+
+      {error && <Alert variant="danger">{error}</Alert>}
+      {feedbackMsg && <Alert variant="success">{feedbackMsg}</Alert>}
 
       <Card className="space-y-4">
         <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -135,6 +165,71 @@ export const PurchaseOrdersPage: React.FC = () => {
 
         <Table columns={columns} data={orders} keyExtractor={(po) => po.id} />
       </Card>
+
+      <AdminPasswordConfirmModal
+        isOpen={Boolean(poToDelete)}
+        title={
+          language === 'ar'
+            ? 'حذف أمر الشراء'
+            : language === 'fr'
+            ? 'Supprimer le bon de commande'
+            : 'Delete Purchase Order'
+        }
+        message={
+          language === 'ar'
+            ? `هل أنت متأكد من حذف أمر الشراء "${poToDelete?.po_number}"؟`
+            : language === 'fr'
+            ? `Voulez-vous supprimer le bon de commande « ${poToDelete?.po_number} » ?`
+            : `Are you sure you want to delete Purchase Order "${poToDelete?.po_number}"?`
+        }
+        warningText={
+          poToDelete?.status === 'Partially received' || poToDelete?.status === 'Fully received'
+            ? language === 'ar'
+              ? 'سيتم حذف سجل أمر الشراء فقط. الكميات التي تم استلامها وإضافتها إلى المخزون سابقاً ستبقى كما هي.'
+              : language === 'fr'
+              ? 'Cette commande sera retirée de la liste. Les quantités déjà reçues en stock ne seront pas modifiées.'
+              : 'This purchase order will be removed from the list. Inventory quantities already received from this order will remain unchanged.'
+            : language === 'ar'
+            ? 'سيتم حذف أمر الشراء نهائياً من قائمة أوامر الشراء.'
+            : language === 'fr'
+            ? 'Ce bon de commande sera supprimé définitivement de la liste des commandes.'
+            : 'This purchase order will be permanently removed from the Purchase Orders list.'
+        }
+        confirmLabel={
+          language === 'ar' ? 'حذف الأمر' : language === 'fr' ? 'Supprimer' : 'Delete Order'
+        }
+        isLoading={isDeleting}
+        onClose={() => {
+          if (!isDeleting) setPoToDelete(null);
+        }}
+        onConfirm={async () => {
+          if (!poToDelete) return;
+          setFeedbackMsg(null);
+          setIsDeleting(true);
+          const deletedNumber = poToDelete.po_number;
+          const ok = await deleteOrder(poToDelete.id, user?.id);
+          setIsDeleting(false);
+          if (ok) {
+            setPoToDelete(null);
+            await loadOrders(search, statusFilter);
+            setFeedbackMsg(
+              language === 'ar'
+                ? `تم حذف أمر الشراء ${deletedNumber} بنجاح.`
+                : language === 'fr'
+                ? `Bon de commande ${deletedNumber} supprimé avec succès.`
+                : `Purchase order ${deletedNumber} deleted successfully.`,
+            );
+          } else {
+            throw new Error(
+              language === 'ar'
+                ? 'تعذر حذف أمر الشراء.'
+                : language === 'fr'
+                ? 'Impossible de supprimer le bon de commande.'
+                : 'Failed to delete purchase order.',
+            );
+          }
+        }}
+      />
     </div>
   );
 };

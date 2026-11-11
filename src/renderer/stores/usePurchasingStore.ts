@@ -21,7 +21,13 @@ interface PurchasingState {
   loadOrders: (query?: string, status?: string) => Promise<void>;
   loadOrderById: (id: string) => Promise<void>;
   createOrder: (payload: PurchaseOrderInput, userId?: string) => Promise<boolean>;
-  updateOrderStatus: (id: string, toStatus: POStatus, notes?: string) => Promise<boolean>;
+  updateOrderStatus: (
+    id: string,
+    toStatus: POStatus,
+    notes?: string,
+    userId?: string,
+  ) => Promise<boolean>;
+  deleteOrder: (id: string, userId?: string) => Promise<boolean>;
   confirmReceipt: (payload: GoodsReceivingInput, userId?: string) => Promise<boolean>;
   createReturn: (payload: PurchaseReturnInput, userId?: string) => Promise<boolean>;
   loadDashboardMetrics: () => Promise<void>;
@@ -88,11 +94,16 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
     }
   },
 
-  updateOrderStatus: async (id: string, toStatus: POStatus, notes?: string) => {
+  updateOrderStatus: async (
+    id: string,
+    toStatus: POStatus,
+    notes?: string,
+    userId?: string,
+  ) => {
     set({ isLoading: true, error: null });
     try {
       if (window.api?.updatePurchaseOrderStatus) {
-        const res = await window.api.updatePurchaseOrderStatus(id, toStatus, notes);
+        const res = await window.api.updatePurchaseOrderStatus(id, toStatus, notes, userId);
         if (res.success) {
           await get().loadOrders();
           if (get().selectedOrder?.id === id) {
@@ -113,6 +124,31 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
     }
   },
 
+  deleteOrder: async (id: string, userId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.deletePurchaseOrder) {
+        const res = await window.api.deletePurchaseOrder(id, userId);
+        if (res.success) {
+          set((state) => ({
+            orders: state.orders.filter((o) => o.id !== id),
+            selectedOrder: state.selectedOrder?.id === id ? null : state.selectedOrder,
+          }));
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Failed deleting purchase order' });
+          return false;
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
   confirmReceipt: async (payload: GoodsReceivingInput, userId?: string) => {
     set({ isLoading: true, error: null });
     try {
@@ -120,6 +156,9 @@ export const usePurchasingStore = create<PurchasingState>((set, get) => ({
         const res = await window.api.confirmGoodsReceipt(payload, userId);
         if (res.success) {
           await get().loadOrders();
+          if (payload.poId && get().selectedOrder?.id === payload.poId) {
+            await get().loadOrderById(payload.poId);
+          }
           return true;
         } else {
           set({ error: res.error?.message || 'Failed confirming goods receipt' });

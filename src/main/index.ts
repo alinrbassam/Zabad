@@ -3,17 +3,7 @@ import { autoUpdater } from 'electron-updater';
 import { createMainWindow } from './window';
 import { registerIpcHandlers } from './ipc';
 import { DatabaseConnection } from './database/connection';
-import { DatabaseMigrator } from './database/migrator';
-import { migrationV2 } from './database/migrations/v2_auth_and_settings';
-import { migrationV3 } from './database/migrations/v3_inventory';
-import { migrationV4 } from './database/migrations/v4_purchasing';
-import { migrationV5 } from './database/migrations/v5_pos';
-import { migrationV6 } from './database/migrations/v6_reports';
-import { migrationV7 } from './database/migrations/v7_commercial';
-import { migrationV8, ensureBorrowColumns } from './database/migrations/v8_expenses_and_borrow';
-import { migrationV9, ensureWeightColumns } from './database/migrations/v9_weight_and_packaging';
-import { migrationV10, ensureCleanUnits } from './database/migrations/v10_simplify_units';
-import { migrationV11, ensureMovementDeleteColumns } from './database/migrations/v11_movement_soft_delete';
+import { initializeDatabaseSchema } from './database/migrations/ensure-schema';
 import path from 'path';
 import { logger } from './services/logger.service';
 import { DemoDataService } from './services/demo-data.service';
@@ -36,26 +26,8 @@ app.whenReady().then(() => {
 
   try {
     const db = DatabaseConnection.getInstance().getDatabase();
-    const migrator = new DatabaseMigrator(db);
-    migrator.initMigrationTable();
-    migrator.runMigrations([
-      migrationV2,
-      migrationV3,
-      migrationV4,
-      migrationV5,
-      migrationV6,
-      migrationV7,
-      migrationV8,
-      migrationV9,
-      migrationV10,
-      migrationV11,
-    ]);
-    ensureBorrowColumns(db);
-    ensureWeightColumns(db);
-    ensureCleanUnits(db);
-    ensureMovementDeleteColumns(db);
-
-    logger.info('App', 'Database migrations v2 through v11 executed successfully');
+    initializeDatabaseSchema(db);
+    logger.info('App', 'Database migrations v2 through v13 and schema guards executed successfully');
 
     const demoService = new DemoDataService(db);
     demoService.ensureZabadCatalog();

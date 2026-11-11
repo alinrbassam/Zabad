@@ -38,6 +38,7 @@ export const GoodsReceivingPage: React.FC = () => {
   const [deliveryNote, setDeliveryNote] = useState('');
   const [receivingLines, setReceivingLines] = useState<ReceivingLine[]>([]);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     loadMetadata();
@@ -45,23 +46,25 @@ export const GoodsReceivingPage: React.FC = () => {
 
   useEffect(() => {
     if (poId) {
+      setReceivingLines([]);
+      setLocalError(null);
       loadOrderById(poId);
     }
   }, [poId, loadOrderById]);
 
   useEffect(() => {
-    if (selectedOrder) {
+    if (selectedOrder && (!poId || selectedOrder.id === poId)) {
       setSupplierId(selectedOrder.supplier_id);
       window.api?.searchProducts('', 1000, 0).then((res) => {
         const prods = res?.success && res.data ? res.data : [];
-        const lines: ReceivingLine[] = selectedOrder.items.map((item: any) => {
-          const prod = prods.find((p: any) => p.id === item.product_id) || {
+        const lines: ReceivingLine[] = selectedOrder.items.map((item, idx) => {
+          const prod = prods.find((p) => p.id === item.product_id) || {
             id: item.product_id,
             name_en: item.product_name || item.description || 'Product',
             sku: item.product_sku || item.product_id,
-            base_unit_id: item.base_unit_id || item.purchasing_unit_id,
-            track_batches: item.track_batches || 0,
-            track_expiry: item.track_expiry || 0,
+            base_unit_id: item.purchasing_unit_id,
+            track_batches: 0,
+            track_expiry: 0,
           };
           const remaining = Math.max(0, item.ordered_qty - item.received_qty);
           return {
@@ -72,7 +75,7 @@ export const GoodsReceivingPage: React.FC = () => {
             receivedQtyNow: remaining,
             unitCost: item.unit_cost,
             unitId: item.purchasing_unit_id || prod.base_unit_id,
-            batchNumber: `BATCH-${Date.now().toString().slice(-4)}`,
+            batchNumber: `BATCH-${Date.now().toString().slice(-4)}-${idx + 1}`,
             mfgDate: '',
             expiryDate: '',
           };
@@ -80,7 +83,7 @@ export const GoodsReceivingPage: React.FC = () => {
         setReceivingLines(lines);
       });
     }
-  }, [selectedOrder]);
+  }, [selectedOrder, poId]);
 
   const updateLine = (index: number, key: keyof ReceivingLine, val: unknown) => {
     const updated = [...receivingLines];
@@ -91,6 +94,13 @@ export const GoodsReceivingPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSuccessMsg(null);
+    setLocalError(null);
+
+    const itemsToReceive = receivingLines.filter((l) => Number(l.receivedQtyNow) > 0);
+    if (itemsToReceive.length === 0) {
+      setLocalError('Please enter a received quantity greater than 0 for at least one product.');
+      return;
+    }
 
     const defaultUnitId = units[0]?.id || 'ad17f3a3-1fc6-4f49-9e3d-6eaf0f48a035';
     const finalSupplierId = supplierId || selectedOrder?.supplier_id || suppliers[0]?.id;
@@ -101,7 +111,7 @@ export const GoodsReceivingPage: React.FC = () => {
       supplierInvoiceNumber: invoiceNumber || undefined,
       receiptDate,
       deliveryNoteNumber: deliveryNote || undefined,
-      items: receivingLines.map((l) => ({
+      items: itemsToReceive.map((l) => ({
         poItemId: l.poItemId,
         productId: l.product.id,
         unitId: l.unitId || l.product.base_unit_id || defaultUnitId,
@@ -129,7 +139,9 @@ export const GoodsReceivingPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-            {poId ? `Receive Goods for ${selectedOrder?.po_number}` : 'Store Goods Receiving'}
+            {poId
+              ? `Receive Goods for ${selectedOrder?.id === poId ? selectedOrder.po_number : '...'}`
+              : 'Store Goods Receiving'}
           </h1>
           <p className="text-xs text-slate-500">
             Record incoming goods, batch numbers, expiry dates, and update inventory.
@@ -140,7 +152,7 @@ export const GoodsReceivingPage: React.FC = () => {
         </Button>
       </div>
 
-      {error && <Alert variant="danger">{error}</Alert>}
+      {(localError || error) && <Alert variant="danger">{localError || error}</Alert>}
       {successMsg && <Alert variant="success">{successMsg}</Alert>}
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -193,6 +205,7 @@ export const GoodsReceivingPage: React.FC = () => {
                       <input
                         type="number"
                         step="0.01"
+                        min="0"
                         value={line.receivedQtyNow}
                         onChange={(e) => updateLine(idx, 'receivedQtyNow', Number(e.target.value))}
                         className="w-full px-2 py-1 border border-slate-300 dark:border-slate-700 rounded text-center bg-white dark:bg-slate-800 font-bold"

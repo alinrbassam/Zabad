@@ -7,7 +7,10 @@ import { DatabaseConnection } from '../database/connection';
 import { LicensingService } from './licensing.service';
 import { SettingsRepository } from '../database/repositories/settings.repository';
 import { BusinessRepository } from '../database/repositories/business.repository';
-import { ensureMovementDeleteColumns } from '../database/migrations/v11_movement_soft_delete';
+import {
+  ensureAllSchemaColumns,
+  initializeDatabaseSchema,
+} from '../database/migrations/ensure-schema';
 import { IPC_CHANNELS } from '../../shared/ipc/channels';
 
 export const DEFAULT_SUPABASE_URL = 'https://zlewivlmnwjloksdercw.supabase.co';
@@ -207,7 +210,9 @@ export class SupabaseSyncService {
         const salesStmt = this.db.prepare(`
           SELECT COUNT(id) as count, COALESCE(SUM(grand_total), 0) as total
           FROM sales_orders
-          WHERE date(created_at) = date(?) AND payment_status != 'Cancelled'
+          WHERE (deleted_at IS NULL OR deleted_at = '')
+            AND date(created_at) = date(?)
+            AND payment_status != 'Cancelled'
         `);
         const salesRes = salesStmt.get(todayStr) as { count: number; total: number };
         orderCountToday = salesRes?.count || 0;
@@ -361,8 +366,8 @@ export class SupabaseSyncService {
       // 5. Restore local machine license records into the new database
       this.licensingService.restoreLicenseRows(localLicenseRows);
 
-      // 5b. Ensure newer schema columns exist on hot-swapped snapshot
-      ensureMovementDeleteColumns(this.db);
+      // 5b. Ensure all migrations and newer schema columns exist on hot-swapped snapshot
+      initializeDatabaseSchema(this.db);
 
       // 6. Update local configuration status
       const now = new Date().toISOString();
@@ -519,7 +524,13 @@ export class SupabaseSyncService {
                   shouldWrite = false;
                 }
               } else if (table === 'sales_orders') {
-                if (existing.payment_status === 'Refunded' && row.payment_status !== 'Refunded') {
+                if (row.deleted_at && !existing.deleted_at) {
+                  shouldWrite = true;
+                } else if (existing.deleted_at && !row.deleted_at) {
+                  shouldWrite = false;
+                } else if (existing.deleted_at && row.deleted_at) {
+                  shouldWrite = false;
+                } else if (existing.payment_status === 'Refunded' && row.payment_status !== 'Refunded') {
                   shouldWrite = false;
                 } else if (row.payment_status === 'Refunded' && existing.payment_status !== 'Refunded') {
                   shouldWrite = true;
@@ -655,6 +666,9 @@ export class SupabaseSyncService {
 
     try {
       logger.info('SupabaseSync', 'Starting Direct Unified Cloud Sync...');
+
+      // Ensure local schema is up-to-date before merging remote rows or uploading a snapshot
+      ensureAllSchemaColumns(this.db);
 
       // 1. Download latest cloud DB
       const dbDownloadUrl = `${config.supabaseUrl}/storage/v1/object/${BUCKET_NAME}/khalil_store.db`;

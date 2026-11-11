@@ -49,4 +49,44 @@ describe('ReportsService - Dashboard Sales Metrics', () => {
     expect(res.grossProfit).toBe(700);
     expect(res.topProducts).toHaveLength(1);
   });
+
+  it('should exclude soft-deleted sales_orders across reports queries', () => {
+    const capturedSql: string[] = [];
+    const trackingDb: Record<string, unknown> = {
+      prepare: (sql: string) => {
+        capturedSql.push(sql);
+        if (sql.includes('FROM sales_orders') || sql.includes('FROM sales_order_items')) {
+          return {
+            get: () => ({
+              totalTransactions: 0,
+              grossRevenue: 0,
+              subtotalSum: 0,
+              totalDiscounts: 0,
+              taxCollected: 0,
+              averageSale: 0,
+              cogs: 0,
+              totalRevenue: 0,
+              totalTax: 0,
+            }),
+            all: () => [],
+          };
+        }
+        return { get: () => ({ totalRefunds: 0, lowStockCount: 0, outOfStockCount: 0 }), all: () => [] };
+      },
+    };
+
+    const trackingReports = new ReportsService(trackingDb as unknown as Database.Database);
+    trackingReports.getDashboardMetrics({ userRole: 'Owner' });
+    trackingReports.getSalesReport({});
+    trackingReports.getProductPerformanceReport({ userRole: 'Owner' });
+    trackingReports.getFinancialReport({ userRole: 'Owner' });
+
+    const salesQueries = capturedSql.filter(
+      (sql) => sql.includes('sales_orders') || sql.includes('sales_refunds'),
+    );
+    expect(salesQueries.length).toBeGreaterThanOrEqual(8);
+    for (const sql of salesQueries) {
+      expect(sql).toContain('deleted_at IS NULL');
+    }
+  });
 });

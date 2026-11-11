@@ -20,7 +20,9 @@ export class POSRefundService {
   }
 
   public processRefund(input: POSRefundInput, userId?: string): SalesRefundEntity {
-    const sale = this.db.prepare('SELECT * FROM sales_orders WHERE id = ?').get(input.saleId) as
+    const sale = this.db
+      .prepare("SELECT * FROM sales_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')")
+      .get(input.saleId) as
       | { id: string; invoice_number: string; grand_total: number; payment_status: string }
       | undefined;
     if (!sale) throw new Error('Sales order not found');
@@ -134,7 +136,7 @@ export class POSRefundService {
     `);
 
     const updateSaleStatus = this.db.prepare(`
-      UPDATE sales_orders SET payment_status = 'Refunded' WHERE id = ?
+      UPDATE sales_orders SET payment_status = 'Refunded', updated_at = CURRENT_TIMESTAMP WHERE id = ?
     `);
 
     this.db.transaction(() => {

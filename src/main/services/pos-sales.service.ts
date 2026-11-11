@@ -5,6 +5,12 @@ import { InventoryService } from './inventory.service';
 import { PurchaseNumberingService } from './purchase-numbering.service';
 import { ProductRepository } from '../database/repositories/product.repository';
 import { AuditRepository } from '../database/repositories/audit.repository';
+import { ensureBorrowColumns } from '../database/migrations/v8_expenses_and_borrow';
+import {
+  ensureWeightColumns,
+  isMissingWeightColumnError,
+} from '../database/migrations/v9_weight_and_packaging';
+import { ensureSalesOrderDeleteColumns } from '../database/migrations/v13_sales_order_soft_delete';
 import { logger } from './logger.service';
 
 export class POSSalesService {
@@ -20,6 +26,34 @@ export class POSSalesService {
     this.numberingService = new PurchaseNumberingService(db);
     this.productRepo = new ProductRepository(db);
     this.auditRepo = new AuditRepository(db);
+  }
+
+  private runWithSalesSchemaRepair<T>(operation: () => T): T {
+    try {
+      return operation();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isMissingSalesCol =
+        isMissingWeightColumnError(err) ||
+        msg.includes('no column named customer_name') ||
+        msg.includes('no column named customer_phone') ||
+        msg.includes('no column named due_date') ||
+        msg.includes('no column named notes') ||
+        msg.includes('no such column: deleted_at') ||
+        msg.includes('no such column: updated_at');
+
+      if (isMissingSalesCol) {
+        logger.warn(
+          'POSSalesService',
+          'Missing schema columns detected on sales tables; repairing schema and retrying operation',
+        );
+        ensureBorrowColumns(this.db);
+        ensureWeightColumns(this.db);
+        ensureSalesOrderDeleteColumns(this.db);
+        return operation();
+      }
+      throw err;
+    }
   }
 
   public calculateSaleTotals(input: POSCheckoutInput) {
@@ -85,27 +119,27 @@ export class POSSalesService {
       paymentStatus = 'Unpaid';
     }
 
-    const insertSale = this.db.prepare(`
-      INSERT INTO sales_orders (
-        id, invoice_number, customer_id, customer_name, customer_phone, due_date, notes,
-        subtotal, item_discount, order_discount,
-        tax_total, grand_total, paid_amount, change_amount, payment_status,
-        payment_method, shift_id, cashier_id, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertItem = this.db.prepare(`
-      INSERT INTO sales_order_items (
-        id, sale_id, product_id, batch_id, unit_id, quantity, unit_price,
-        cost_price, discount, tax_rate, tax_amount, line_total,
-        selling_mode, piece_weight, pieces_per_pack, unit_weight, total_weight
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const insertPayment = this.db.prepare(`
-      INSERT INTO sales_payments (id, sale_id, payment_method, amount, reference_number, notes, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+    const { insertSale, insertItem, insertPayment } = this.runWithSalesSchemaRepair(() => ({
+      insertSale: this.db.prepare(`
+        INSERT INTO sales_orders (
+          id, invoice_number, customer_id, customer_name, customer_phone, due_date, notes,
+          subtotal, item_discount, order_discount,
+          tax_total, grand_total, paid_amount, change_amount, payment_status,
+          payment_method, shift_id, cashier_id, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `),
+      insertItem: this.db.prepare(`
+        INSERT INTO sales_order_items (
+          id, sale_id, product_id, batch_id, unit_id, quantity, unit_price,
+          cost_price, discount, tax_rate, tax_amount, line_total,
+          selling_mode, piece_weight, pieces_per_pack, unit_weight, total_weight
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `),
+      insertPayment: this.db.prepare(`
+        INSERT INTO sales_payments (id, sale_id, payment_method, amount, reference_number, notes, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `),
+    }));
 
     const paymentMethodName =
       input.payments.length === 1 ? input.payments[0].paymentMethod : (hasBorrow ? 'Borrow' : 'Split');
@@ -255,7 +289,7 @@ export class POSSalesService {
   }
 
   public getSalesHistory(query = ''): SalesOrderEntity[] {
-    let sql = 'SELECT * FROM sales_orders WHERE 1=1';
+    let sql = "SELECT * FROM sales_orders WHERE (deleted_at IS NULL OR deleted_at = '')";
     const params: string[] = [];
 
     if (query) {
@@ -270,28 +304,32 @@ export class POSSalesService {
   public getSaleById(
     id: string,
   ): (SalesOrderEntity & { items: any[] }) | undefined {
-    const sale = this.db.prepare('SELECT * FROM sales_orders WHERE id = ?').get(id) as
-      SalesOrderEntity | undefined;
-    if (!sale) return undefined;
+    return this.runWithSalesSchemaRepair(() => {
+      const sale = this.db
+        .prepare("SELECT * FROM sales_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')")
+        .get(id) as SalesOrderEntity | undefined;
+      if (!sale) return undefined;
 
-    const items = this.db
-      .prepare(`
-        SELECT soi.*, p.name_en, p.name_ar,
-               p.piece_weight as product_piece_weight, p.pieces_per_pack as product_pieces_per_pack,
-               u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol
-        FROM sales_order_items soi
-        LEFT JOIN products p ON soi.product_id = p.id
-        LEFT JOIN units u ON soi.unit_id = u.id
-        WHERE soi.sale_id = ?
-      `)
-      .all(id);
-    return { ...sale, items };
+      const items = this.db
+        .prepare(`
+          SELECT soi.*, p.name_en, p.name_ar,
+                 p.piece_weight as product_piece_weight, p.pieces_per_pack as product_pieces_per_pack,
+                 u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol
+          FROM sales_order_items soi
+          LEFT JOIN products p ON soi.product_id = p.id
+          LEFT JOIN units u ON soi.unit_id = u.id
+          WHERE soi.sale_id = ?
+        `)
+        .all(id);
+      return { ...sale, items };
+    });
   }
 
   public getDebts(query = ''): SalesOrderEntity[] {
     let sql = `
       SELECT * FROM sales_orders
-      WHERE (payment_status IN ('Unpaid', 'Partially paid') OR payment_method IN ('Borrow', 'Credit'))
+      WHERE (deleted_at IS NULL OR deleted_at = '')
+        AND (payment_status IN ('Unpaid', 'Partially paid') OR payment_method IN ('Borrow', 'Credit'))
     `;
     const params: string[] = [];
     if (query) {
@@ -309,7 +347,9 @@ export class POSSalesService {
     cashierId?: string,
     notes?: string,
   ): SalesOrderEntity {
-    const sale = this.db.prepare('SELECT * FROM sales_orders WHERE id = ?').get(saleId) as SalesOrderEntity | undefined;
+    const sale = this.db
+      .prepare("SELECT * FROM sales_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')")
+      .get(saleId) as SalesOrderEntity | undefined;
     if (!sale) throw new Error('Sale not found');
 
     const newPaidAmount = Math.round(((sale.paid_amount || 0) + amount) * 100) / 100;
@@ -323,7 +363,7 @@ export class POSSalesService {
 
     const updateSale = this.db.prepare(`
       UPDATE sales_orders
-      SET paid_amount = ?, payment_status = ?
+      SET paid_amount = ?, payment_status = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `);
 
@@ -341,5 +381,59 @@ export class POSSalesService {
     });
 
     return this.getSaleById(saleId) as any;
+  }
+
+  public deleteSale(id: string, userId?: string): void {
+    const sale = this.db
+      .prepare("SELECT * FROM sales_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')")
+      .get(id) as SalesOrderEntity | undefined;
+    if (!sale) throw new Error('Sale not found');
+
+    const now = new Date().toISOString();
+    this.db.transaction(() => {
+      this.db
+        .prepare('UPDATE sales_orders SET deleted_at = ?, updated_at = ? WHERE id = ?')
+        .run(now, now, id);
+    })();
+
+    this.auditRepo.logAction({
+      user_id: userId,
+      action: 'SALE_DELETED',
+      module: 'POS',
+      details: `Soft-deleted POS sale receipt #${sale.invoice_number} (total ${sale.grand_total})`,
+    });
+    logger.info('POSSalesService', `Soft-deleted Sale #${sale.invoice_number} (${id})`);
+  }
+
+  public resetSalesHistory(userId?: string): { clearedCount: number } {
+    const countRow = this.db
+      .prepare(
+        "SELECT COUNT(id) as cnt FROM sales_orders WHERE (deleted_at IS NULL OR deleted_at = '')",
+      )
+      .get() as { cnt: number } | undefined;
+    const clearedCount = Number(countRow?.cnt || 0);
+
+    if (clearedCount === 0) {
+      return { clearedCount: 0 };
+    }
+
+    const now = new Date().toISOString();
+    this.db.transaction(() => {
+      this.db
+        .prepare(
+          "UPDATE sales_orders SET deleted_at = ?, updated_at = ? WHERE (deleted_at IS NULL OR deleted_at = '')",
+        )
+        .run(now, now);
+    })();
+
+    this.auditRepo.logAction({
+      user_id: userId,
+      action: 'SALES_HISTORY_RESET',
+      module: 'POS',
+      details: `Reset POS sales history (${clearedCount} receipts soft-deleted)`,
+    });
+    logger.info('POSSalesService', `Reset POS sales history (${clearedCount} receipts cleared)`);
+
+    return { clearedCount };
   }
 }

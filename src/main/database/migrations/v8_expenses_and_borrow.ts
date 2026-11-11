@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { logger } from '../../services/logger.service';
 
 export const migrationV8 = {
   version: 8,
@@ -25,30 +26,38 @@ export const migrationV8 = {
 export function ensureBorrowColumns(db: Database.Database): void {
   try {
     const columns = db.prepare(`PRAGMA table_info(sales_orders)`).all() as Array<{ name: string }>;
-    const colNames = new Set(columns.map((c) => c.name));
+    if (columns.length > 0) {
+      const colNames = new Set(columns.map((c) => c.name));
 
-    if (!colNames.has('customer_name')) {
-      db.exec(`ALTER TABLE sales_orders ADD COLUMN customer_name TEXT NULL`);
-    }
-    if (!colNames.has('customer_phone')) {
-      db.exec(`ALTER TABLE sales_orders ADD COLUMN customer_phone TEXT NULL`);
-    }
-    if (!colNames.has('due_date')) {
-      db.exec(`ALTER TABLE sales_orders ADD COLUMN due_date TEXT NULL`);
-    }
-    if (!colNames.has('notes')) {
-      db.exec(`ALTER TABLE sales_orders ADD COLUMN notes TEXT NULL`);
-    }
-
-    const expCols = db.prepare(`PRAGMA table_info(expenses)`).all() as Array<{ name: string }>;
-    const expColNames = new Set(expCols.map((c) => c.name));
-    if (!expColNames.has('deleted_at')) {
-      db.exec(`ALTER TABLE expenses ADD COLUMN deleted_at DATETIME NULL`);
-    }
-    if (!expColNames.has('updated_at')) {
-      db.exec(`ALTER TABLE expenses ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+      if (!colNames.has('customer_name')) {
+        db.exec(`ALTER TABLE sales_orders ADD COLUMN customer_name TEXT NULL`);
+      }
+      if (!colNames.has('customer_phone')) {
+        db.exec(`ALTER TABLE sales_orders ADD COLUMN customer_phone TEXT NULL`);
+      }
+      if (!colNames.has('due_date')) {
+        db.exec(`ALTER TABLE sales_orders ADD COLUMN due_date TEXT NULL`);
+      }
+      if (!colNames.has('notes')) {
+        db.exec(`ALTER TABLE sales_orders ADD COLUMN notes TEXT NULL`);
+      }
     }
   } catch (err) {
-    // If sales_orders or expenses table doesn't exist yet, migration creates it
+    logger.error('MigrationV8', 'Failed ensuring borrow columns on sales_orders table', err);
+  }
+
+  try {
+    const expCols = db.prepare(`PRAGMA table_info(expenses)`).all() as Array<{ name: string }>;
+    if (expCols.length > 0) {
+      const expColNames = new Set(expCols.map((c) => c.name));
+      if (!expColNames.has('deleted_at')) {
+        db.exec(`ALTER TABLE expenses ADD COLUMN deleted_at DATETIME NULL`);
+      }
+      if (!expColNames.has('updated_at')) {
+        db.exec(`ALTER TABLE expenses ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`);
+      }
+    }
+  } catch (err) {
+    logger.error('MigrationV8', 'Failed ensuring metadata columns on expenses table', err);
   }
 }

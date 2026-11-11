@@ -7,21 +7,36 @@ import { Table, Column } from '@components/ui/Table';
 import { SearchBox } from '@components/ui/SearchBox';
 import { Button } from '@components/ui/Button';
 import { Badge } from '@components/ui/Badge';
+import { Alert } from '@components/ui/Alert';
+import { AdminPasswordConfirmModal } from '@components/auth/AdminPasswordConfirmModal';
 import { SalesOrderEntity } from '@shared/types';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
 import { DailyClosingReportModal } from './DailyClosingReportModal';
-import { History, Printer, Undo2, FileText } from 'lucide-react';
+import { History, Printer, Undo2, FileText, Trash2, RotateCcw } from 'lucide-react';
 import { formatDateTime } from '@utils/date';
 import { formatCurrency } from '../../renderer/utils/currency';
 
 export const SalesHistoryPage: React.FC = () => {
-  const { salesHistory, loadSalesHistory, selectedSale, loadSaleById, processRefund } =
-    usePOSStore();
+  const {
+    salesHistory,
+    loadSalesHistory,
+    selectedSale,
+    loadSaleById,
+    processRefund,
+    deleteSale,
+    resetSalesHistory,
+    error,
+  } = usePOSStore();
   const { user } = useAuthStore();
   const { language } = useLanguageStore();
   const [search, setSearch] = useState('');
   const [activeReceiptSale, setActiveReceiptSale] = useState<SalesOrderEntity | null>(null);
   const [showClosingReportModal, setShowClosingReportModal] = useState(false);
+  const [saleToDelete, setSaleToDelete] = useState<SalesOrderEntity | null>(null);
+  const [isDeletingSale, setIsDeletingSale] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isResettingSales, setIsResettingSales] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   useEffect(() => {
     loadSalesHistory(search);
@@ -157,6 +172,22 @@ export const SalesHistoryPage: React.FC = () => {
               {language === 'ar' ? 'استرجاع' : language === 'fr' ? 'Rembourser' : 'Refund'}
             </Button>
           )}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSaleToDelete(s)}
+            title={
+              language === 'ar'
+                ? 'حذف الفاتورة'
+                : language === 'fr'
+                ? 'Supprimer le reçu'
+                : 'Delete Receipt'
+            }
+            className="hover:bg-rose-100 dark:hover:bg-rose-950/60 text-rose-500 hover:text-rose-600 p-1.5 rounded-lg transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
         </div>
       ),
     },
@@ -177,20 +208,41 @@ export const SalesHistoryPage: React.FC = () => {
           </div>
         </div>
 
-        <Button
-          onClick={() => setShowClosingReportModal(true)}
-          className="bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center space-x-2 rtl:space-x-reverse shadow-sm"
-        >
-          <FileText className="h-4 w-4" />
-          <span>
-            {language === 'ar'
-              ? 'تقرير إغلاق اليومية (Z-Report)'
-              : language === 'fr'
-              ? 'Rapport de Clôture (Z-Report)'
-              : 'Daily Closing Report (Z-Report)'}
-          </span>
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setShowResetModal(true)}
+            disabled={salesHistory.length === 0 && search.trim() === ''}
+            className="border-rose-200 dark:border-rose-800 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-semibold flex items-center space-x-2 rtl:space-x-reverse"
+          >
+            <RotateCcw className="h-4 w-4" />
+            <span>
+              {language === 'ar'
+                ? 'تصفير سجل المبيعات'
+                : language === 'fr'
+                ? "Réinitialiser l'historique"
+                : 'Reset Sales History'}
+            </span>
+          </Button>
+
+          <Button
+            onClick={() => setShowClosingReportModal(true)}
+            className="bg-sky-600 hover:bg-sky-700 text-white font-bold flex items-center space-x-2 rtl:space-x-reverse shadow-sm"
+          >
+            <FileText className="h-4 w-4" />
+            <span>
+              {language === 'ar'
+                ? 'تقرير إغلاق اليومية (Z-Report)'
+                : language === 'fr'
+                ? 'Rapport de Clôture (Z-Report)'
+                : 'Daily Closing Report (Z-Report)'}
+            </span>
+          </Button>
+        </div>
       </div>
+
+      {error && <Alert variant="danger">{error}</Alert>}
+      {feedbackMsg && <Alert variant="success">{feedbackMsg}</Alert>}
 
       <Card className="space-y-4">
         <div className="max-w-md">
@@ -212,6 +264,127 @@ export const SalesHistoryPage: React.FC = () => {
       <DailyClosingReportModal
         isOpen={showClosingReportModal}
         onClose={() => setShowClosingReportModal(false)}
+      />
+
+      <AdminPasswordConfirmModal
+        isOpen={Boolean(saleToDelete)}
+        title={
+          language === 'ar'
+            ? 'حذف فاتورة مبيعات'
+            : language === 'fr'
+            ? 'Supprimer le reçu de vente'
+            : 'Delete Sales Receipt'
+        }
+        message={
+          language === 'ar'
+            ? `هل أنت متأكد من حذف الفاتورة "${saleToDelete?.invoice_number}"؟`
+            : language === 'fr'
+            ? `Voulez-vous supprimer le reçu « ${saleToDelete?.invoice_number} » ?`
+            : `Are you sure you want to delete receipt "${saleToDelete?.invoice_number}"?`
+        }
+        warningText={
+          language === 'ar'
+            ? 'سيتم حذف هذه الفاتورة من سجل المبيعات وتقارير المبيعات والديون غير المدفوعة المرتبطة بها دون تغيير كميات المخزون الحالية.'
+            : language === 'fr'
+            ? 'Ce reçu sera retiré de l’historique des ventes, des rapports et des dettes liées sans modifier les stocks actuels.'
+            : 'This receipt will be removed from sales history, sales reports, and linked unpaid debts without changing current inventory stock quantities.'
+        }
+        confirmLabel={
+          language === 'ar' ? 'حذف الفاتورة' : language === 'fr' ? 'Supprimer' : 'Delete Receipt'
+        }
+        isLoading={isDeletingSale}
+        onClose={() => {
+          if (!isDeletingSale) setSaleToDelete(null);
+        }}
+        onConfirm={async () => {
+          if (!saleToDelete) return;
+          setFeedbackMsg(null);
+          setIsDeletingSale(true);
+          const deletedInvoice = saleToDelete.invoice_number;
+          const ok = await deleteSale(saleToDelete.id, user?.id);
+          setIsDeletingSale(false);
+          if (ok) {
+            setSaleToDelete(null);
+            await loadSalesHistory(search);
+            setFeedbackMsg(
+              language === 'ar'
+                ? `تم حذف الفاتورة ${deletedInvoice} بنجاح.`
+                : language === 'fr'
+                ? `Reçu ${deletedInvoice} supprimé avec succès.`
+                : `Sales receipt ${deletedInvoice} deleted successfully.`,
+            );
+          } else {
+            throw new Error(
+              language === 'ar'
+                ? 'تعذر حذف الفاتورة.'
+                : language === 'fr'
+                ? 'Impossible de supprimer le reçu.'
+                : 'Failed to delete sales receipt.',
+            );
+          }
+        }}
+      />
+
+      <AdminPasswordConfirmModal
+        isOpen={showResetModal}
+        title={
+          language === 'ar'
+            ? 'تصفير سجل المبيعات'
+            : language === 'fr'
+            ? "Réinitialiser l'historique des ventes"
+            : 'Reset POS Sales History'
+        }
+        message={
+          language === 'ar'
+            ? 'هل أنت متأكد من تصفير وحذف جميع فواتير المبيعات التجريبية؟'
+            : language === 'fr'
+            ? 'Voulez-vous réinitialiser et supprimer tout l’historique des ventes ?'
+            : 'Are you sure you want to reset and clear all recorded POS sales receipts?'
+        }
+        warningText={
+          language === 'ar'
+            ? 'سيتم مسح جميع فواتير المبيعات وتصفير أرقام المبيعات في التقارير وتقرير الإغلاق اليومي والديون المرتبطة بها عبر جميع الأجهزة المتزامنة. لن تتغير كميات المخزون الحالية.'
+            : language === 'fr'
+            ? 'Tous les reçus de vente, les totaux des rapports, le Z-Report et les dettes associées seront effacés sur tous les appareils synchronisés. Les quantités en stock ne seront pas modifiées.'
+            : 'All sales receipts, report totals, Z-Report sales figures, and unpaid invoice records will be cleared across synced devices. Current product inventory stock will remain unchanged.'
+        }
+        confirmLabel={
+          language === 'ar'
+            ? 'تصفير الكل'
+            : language === 'fr'
+            ? 'Tout réinitialiser'
+            : 'Reset All Sales'
+        }
+        isLoading={isResettingSales}
+        onClose={() => {
+          if (!isResettingSales) setShowResetModal(false);
+        }}
+        onConfirm={async () => {
+          setFeedbackMsg(null);
+          setIsResettingSales(true);
+          const result = await resetSalesHistory(user?.id);
+          setIsResettingSales(false);
+          if (result.ok) {
+            setShowResetModal(false);
+            setSearch('');
+            await loadSalesHistory('');
+            setFeedbackMsg(
+              language === 'ar'
+                ? `تم تصفير سجل المبيعات بنجاح (${result.clearedCount} فاتورة).`
+                : language === 'fr'
+                ? `Historique des ventes réinitialisé (${result.clearedCount} reçu(s) effacé(s)).`
+                : `POS sales history reset successfully (${result.clearedCount} receipt${result.clearedCount === 1 ? '' : 's'} cleared).`,
+            );
+          } else {
+            throw new Error(
+              language === 'ar'
+                ? 'تعذر تصفير سجل المبيعات.'
+                : language === 'fr'
+                ? "Impossible de réinitialiser l'historique des ventes."
+                : 'Failed to reset POS sales history.',
+            );
+          }
+        }}
       />
     </div>
   );

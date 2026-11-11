@@ -44,10 +44,14 @@ export class MaintenanceService {
     const productRes = this.db
       .prepare('SELECT COUNT(*) as cnt FROM products WHERE deleted_at IS NULL')
       .get() as { cnt: number };
-    const salesRes = this.db.prepare('SELECT COUNT(*) as cnt FROM sales_orders').get() as {
+    const salesRes = this.db
+      .prepare("SELECT COUNT(*) as cnt FROM sales_orders WHERE (deleted_at IS NULL OR deleted_at = '')")
+      .get() as {
       cnt: number;
     };
-    const purchaseRes = this.db.prepare('SELECT COUNT(*) as cnt FROM purchase_orders').get() as {
+    const purchaseRes = this.db
+      .prepare("SELECT COUNT(*) as cnt FROM purchase_orders WHERE (deleted_at IS NULL OR deleted_at = '')")
+      .get() as {
       cnt: number;
     };
     const lastBackup = this.db

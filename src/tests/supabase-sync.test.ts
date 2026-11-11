@@ -138,4 +138,98 @@ describe('SupabaseSyncService Configuration & Roles', () => {
     expect(pragmaCalls).toContain('foreign_keys = ON');
     expect(pragmaCalls.indexOf('foreign_keys = OFF')).toBeLessThan(pragmaCalls.indexOf('foreign_keys = ON'));
   });
+
+  it('should propagate sales_orders soft-deletions across synced laptops without resurrecting deleted test sales', () => {
+    const localSales: Record<string, Record<string, unknown>> = {
+      'sale-remote-deleted': {
+        id: 'sale-remote-deleted',
+        invoice_number: 'INV-2026-000044',
+        grand_total: 400,
+        paid_amount: 400,
+        payment_status: 'Paid',
+        updated_at: '2026-10-27T09:47:00.000Z',
+        deleted_at: null,
+      },
+      'sale-local-deleted': {
+        id: 'sale-local-deleted',
+        invoice_number: 'INV-2026-000045',
+        grand_total: 4636359,
+        paid_amount: 4636359,
+        payment_status: 'Paid',
+        updated_at: '2026-11-09T11:30:00.000Z',
+        deleted_at: '2026-11-09T11:30:00.000Z',
+      },
+    };
+
+    const cols = [
+      'id',
+      'invoice_number',
+      'grand_total',
+      'paid_amount',
+      'payment_status',
+      'updated_at',
+      'deleted_at',
+    ];
+
+    const syncMockDb = {
+      pragma: vi.fn(),
+      prepare: (sql: string) => {
+        if (sql.includes('PRAGMA table_info(sales_orders)')) {
+          return {
+            all: () => cols.map((name) => ({ name, pk: name === 'id' ? 1 : 0 })),
+          };
+        }
+        if (sql.includes('SELECT * FROM sales_orders WHERE id = ?')) {
+          return {
+            get: (id: string) => localSales[id],
+          };
+        }
+        if (sql.includes('UPDATE sales_orders SET')) {
+          const nonPkCols = cols.filter((c) => c !== 'id');
+          return {
+            run: (...args: unknown[]) => {
+              const id = String(args[nonPkCols.length]);
+              const target = localSales[id];
+              if (target) {
+                nonPkCols.forEach((col, idx) => {
+                  target[col] = args[idx];
+                });
+              }
+            },
+          };
+        }
+        return { get: () => undefined, all: () => [], run: vi.fn() };
+      },
+      transaction: (fn: () => void) => () => fn(),
+    };
+
+    const syncService = new SupabaseSyncService(syncMockDb as unknown as Database.Database);
+    const mergedCount = syncService.mergeRemoteData({
+      sales_orders: [
+        {
+          id: 'sale-remote-deleted',
+          invoice_number: 'INV-2026-000044',
+          grand_total: 400,
+          paid_amount: 400,
+          payment_status: 'Paid',
+          updated_at: '2026-11-09T11:35:00.000Z',
+          deleted_at: '2026-11-09T11:35:00.000Z',
+        },
+        {
+          id: 'sale-local-deleted',
+          invoice_number: 'INV-2026-000045',
+          grand_total: 4636359,
+          paid_amount: 5000000,
+          payment_status: 'Refunded',
+          updated_at: '2026-11-09T10:00:00.000Z',
+          deleted_at: null,
+        },
+      ],
+    });
+
+    // Only the remote soft-delete should overwrite local non-deleted sale; local deletion must stay deleted
+    expect(mergedCount).toBe(1);
+    expect(localSales['sale-remote-deleted'].deleted_at).toBe('2026-11-09T11:35:00.000Z');
+    expect(localSales['sale-local-deleted'].deleted_at).toBe('2026-11-09T11:30:00.000Z');
+  });
 });

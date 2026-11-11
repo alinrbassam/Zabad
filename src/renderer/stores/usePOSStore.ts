@@ -60,6 +60,8 @@ interface POSState {
   ) => Promise<boolean>;
   loadSaleById: (id: string) => Promise<void>;
   processRefund: (payload: POSRefundInput, userId?: string) => Promise<boolean>;
+  deleteSale: (id: string, userId?: string) => Promise<boolean>;
+  resetSalesHistory: (userId?: string) => Promise<{ ok: boolean; clearedCount: number }>;
 }
 
 export const usePOSStore = create<POSState>((set, get) => ({
@@ -321,6 +323,52 @@ export const usePOSStore = create<POSState>((set, get) => ({
     } catch (err) {
       set({ error: (err as Error).message });
       return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  deleteSale: async (id: string, userId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.deleteSale) {
+        const res = await window.api.deleteSale(id, userId);
+        if (res.success) {
+          set((state) => ({
+            salesHistory: state.salesHistory.filter((s) => s.id !== id),
+            debts: state.debts.filter((d) => d.id !== id),
+            selectedSale: state.selectedSale?.id === id ? null : state.selectedSale,
+          }));
+          return true;
+        } else {
+          set({ error: res.error?.message || 'Failed to delete sale receipt' });
+        }
+      }
+      return false;
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return false;
+    } finally {
+      set({ isLoading: false });
+    }
+  },
+
+  resetSalesHistory: async (userId?: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      if (window.api?.resetSalesHistory) {
+        const res = await window.api.resetSalesHistory(userId);
+        if (res.success) {
+          set({ salesHistory: [], debts: [], selectedSale: null });
+          return { ok: true, clearedCount: Number(res.data?.clearedCount || 0) };
+        } else {
+          set({ error: res.error?.message || 'Failed to reset sales history' });
+        }
+      }
+      return { ok: false, clearedCount: 0 };
+    } catch (err) {
+      set({ error: (err as Error).message });
+      return { ok: false, clearedCount: 0 };
     } finally {
       set({ isLoading: false });
     }

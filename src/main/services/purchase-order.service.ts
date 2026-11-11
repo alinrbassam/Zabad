@@ -161,9 +161,14 @@ export class PurchaseOrderService {
 
   public getPurchaseOrderById(
     id: string,
-  ): (PurchaseOrderEntity & { items: PurchaseOrderItemEntity[] }) | undefined {
-    const poStmt = this.db.prepare('SELECT * FROM purchase_orders WHERE id = ?');
-    const po = poStmt.get(id) as PurchaseOrderEntity | undefined;
+  ): (PurchaseOrderEntity & { supplier_name?: string; items: PurchaseOrderItemEntity[] }) | undefined {
+    const poStmt = this.db.prepare(`
+      SELECT po.*, s.name as supplier_name
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON po.supplier_id = s.id
+      WHERE po.id = ? AND (po.deleted_at IS NULL OR po.deleted_at = '')
+    `);
+    const po = poStmt.get(id) as (PurchaseOrderEntity & { supplier_name?: string }) | undefined;
     if (!po) return undefined;
 
     const itemsStmt = this.db.prepare(`
@@ -197,7 +202,7 @@ export class PurchaseOrderService {
 
   public searchPurchaseOrders(query = '', status?: string): PurchaseOrderEntity[] {
     let sql =
-      'SELECT po.*, s.name as supplier_name FROM purchase_orders po LEFT JOIN suppliers s ON po.supplier_id = s.id WHERE 1=1';
+      "SELECT po.*, s.name as supplier_name FROM purchase_orders po LEFT JOIN suppliers s ON po.supplier_id = s.id WHERE (po.deleted_at IS NULL OR po.deleted_at = '')";
     const params: (string | number)[] = [];
 
     if (query) {
@@ -221,11 +226,18 @@ export class PurchaseOrderService {
     const fromStatus = po.status;
     const now = new Date().toISOString();
 
-    const updateStmt = this.db.prepare(`
-      UPDATE purchase_orders
-      SET status = ?, updated_at = ?
-      WHERE id = ?
-    `);
+    const updateStmt =
+      toStatus === 'Cancelled'
+        ? this.db.prepare(`
+            UPDATE purchase_orders
+            SET status = ?, cancelled_at = ?, cancellation_reason = COALESCE(?, cancellation_reason), updated_at = ?
+            WHERE id = ?
+          `)
+        : this.db.prepare(`
+            UPDATE purchase_orders
+            SET status = ?, updated_at = ?
+            WHERE id = ?
+          `);
 
     const historyStmt = this.db.prepare(`
       INSERT INTO purchase_order_status_history (id, po_id, from_status, to_status, user_id, notes)
@@ -233,7 +245,11 @@ export class PurchaseOrderService {
     `);
 
     this.db.transaction(() => {
-      updateStmt.run(toStatus, now, id);
+      if (toStatus === 'Cancelled') {
+        updateStmt.run(toStatus, now, notes || null, now, id);
+      } else {
+        updateStmt.run(toStatus, now, id);
+      }
       historyStmt.run(
         crypto.randomUUID(),
         id,
@@ -250,5 +266,24 @@ export class PurchaseOrderService {
       module: 'Purchasing',
       details: `PO #${po.po_number} status changed from ${fromStatus} to ${toStatus}`,
     });
+  }
+
+  public deletePurchaseOrder(id: string, userId?: string): void {
+    const po = this.getPurchaseOrderById(id);
+    if (!po) throw new Error('Purchase order not found');
+
+    const now = new Date().toISOString();
+    this.db
+      .prepare('UPDATE purchase_orders SET deleted_at = ?, updated_at = ? WHERE id = ?')
+      .run(now, now, id);
+
+    this.auditRepo.logAction({
+      user_id: userId,
+      action: 'PURCHASE_ORDER_DELETED',
+      module: 'Purchasing',
+      details: `Deleted Purchase Order #${po.po_number} (status was ${po.status})`,
+    });
+
+    logger.info('PurchaseOrderService', `Soft-deleted PO #${po.po_number} (${id})`);
   }
 }

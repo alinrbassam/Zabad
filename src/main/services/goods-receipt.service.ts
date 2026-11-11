@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { GoodsReceivingInput } from '../../shared/validation';
-import { GoodsReceiptEntity } from '../../shared/types';
+import { GoodsReceiptEntity, POStatus } from '../../shared/types';
 import { InventoryService } from './inventory.service';
 import { BatchService } from './batch.service';
 import { PurchaseNumberingService } from './purchase-numbering.service';
@@ -40,7 +40,11 @@ export class GoodsReceiptService {
     let supplierId = input.supplierId;
     if (input.poId) {
       try {
-        const po = this.db.prepare('SELECT supplier_id FROM purchase_orders WHERE id = ?').get(input.poId) as
+        const po = this.db
+          .prepare(
+            "SELECT supplier_id FROM purchase_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')",
+          )
+          .get(input.poId) as
           | { supplier_id?: string }
           | undefined;
         if (po?.supplier_id) {
@@ -180,6 +184,69 @@ export class GoodsReceiptService {
               'UPDATE purchase_order_items SET received_qty = received_qty + ? WHERE id = ?',
             )
             .run(item.acceptedQty, item.poItemId);
+        } else if (input.poId) {
+          const matchedPoItem = this.db
+            .prepare(
+              'SELECT id FROM purchase_order_items WHERE po_id = ? AND product_id = ? LIMIT 1',
+            )
+            .get(input.poId, item.productId) as { id?: string } | undefined;
+          if (matchedPoItem?.id) {
+            this.db
+              .prepare(
+                'UPDATE purchase_order_items SET received_qty = received_qty + ? WHERE id = ?',
+              )
+              .run(item.acceptedQty, matchedPoItem.id);
+          }
+        }
+      }
+
+      if (input.poId) {
+        const po = this.db
+          .prepare(
+            "SELECT id, status FROM purchase_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')",
+          )
+          .get(input.poId) as { id: string; status: POStatus } | undefined;
+
+        if (po) {
+          const poItems = this.db
+            .prepare('SELECT ordered_qty, received_qty FROM purchase_order_items WHERE po_id = ?')
+            .all(input.poId) as Array<{ ordered_qty: number; received_qty: number }>;
+
+          const anyReceived = poItems.some((row) => Number(row.received_qty || 0) > 0);
+          const allFullyReceived =
+            poItems.length > 0 &&
+            poItems.every(
+              (row) => Number(row.received_qty || 0) + 1e-6 >= Number(row.ordered_qty || 0),
+            );
+
+          const nextStatus: POStatus = allFullyReceived
+            ? 'Fully received'
+            : anyReceived
+              ? 'Partially received'
+              : po.status;
+
+          if (nextStatus !== po.status) {
+            this.db
+              .prepare('UPDATE purchase_orders SET status = ?, updated_at = ? WHERE id = ?')
+              .run(nextStatus, now, input.poId);
+
+            this.db
+              .prepare(
+                'INSERT INTO purchase_order_status_history (id, po_id, from_status, to_status, user_id, notes) VALUES (?, ?, ?, ?, ?, ?)',
+              )
+              .run(
+                crypto.randomUUID(),
+                input.poId,
+                po.status,
+                nextStatus,
+                userId || 'system',
+                `Automatically updated via Goods Receipt #${grNumber}`,
+              );
+          } else {
+            this.db
+              .prepare('UPDATE purchase_orders SET updated_at = ? WHERE id = ?')
+              .run(now, input.poId);
+          }
         }
       }
     })();
@@ -188,7 +255,7 @@ export class GoodsReceiptService {
       user_id: userId,
       action: 'GOODS_RECEIPT_CREATED',
       module: 'Purchasing',
-      details: `Received Goods Receipt #${grNumber} for supplier ${input.supplierId}`,
+      details: `Received Goods Receipt #${grNumber} for supplier ${supplierId}`,
     });
 
     logger.info('GoodsReceiptService', `Confirmed Goods Receipt #${grNumber}`);
@@ -197,7 +264,7 @@ export class GoodsReceiptService {
       id: grId,
       receipt_number: grNumber,
       po_id: input.poId,
-      supplier_id: input.supplierId,
+      supplier_id: supplierId,
       receipt_date: input.receiptDate,
       delivery_note_number: input.deliveryNoteNumber,
       status: 'Confirmed',

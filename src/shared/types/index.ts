@@ -292,12 +292,15 @@ export interface PurchaseOrderEntity extends BaseEntity {
   approved_by?: string;
   ordered_by?: string;
   cancelled_at?: string | null;
+  supplier_name?: string;
 }
 
 export interface PurchaseOrderItemEntity {
   id: string;
   po_id: string;
   product_id: string;
+  product_name?: string;
+  product_sku?: string;
   description?: string;
   purchasing_unit_id: string;
   conversion_ratio: number;
@@ -396,6 +399,8 @@ export interface SalesOrderEntity {
   shift_id?: string;
   cashier_id?: string;
   created_at: string;
+  updated_at?: string;
+  deleted_at?: string | null;
 }
 
 export type ExpenseCategory =

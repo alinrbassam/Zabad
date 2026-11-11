@@ -80,6 +80,7 @@ export const IPC_CHANNELS = {
   PURCHASE_ORDERS_GET_BY_ID: 'po:get_by_id',
   PURCHASE_ORDERS_CREATE: 'po:create',
   PURCHASE_ORDERS_UPDATE_STATUS: 'po:update_status',
+  PURCHASE_ORDERS_DELETE: 'po:delete',
 
   GOODS_RECEIPTS_CONFIRM: 'gr:confirm',
   DIRECT_PURCHASES_CREATE: 'direct_purchase:create',
@@ -98,6 +99,8 @@ export const IPC_CHANNELS = {
   POS_SUSPENDED_LIST: 'pos:suspended_list',
   POS_SUSPENDED_DELETE: 'pos:suspended_delete',
   POS_REFUND: 'pos:refund',
+  POS_SALE_DELETE: 'pos:sale_delete',
+  POS_SALES_RESET: 'pos:sales_reset',
   POS_SHIFT_GET_ACTIVE: 'pos:shift_get_active',
   POS_SHIFT_OPEN: 'pos:shift_open',
   POS_SHIFT_CLOSE: 'pos:shift_close',

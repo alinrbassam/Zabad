@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { logger } from '../../services/logger.service';
 
 export const migrationV11 = {
   version: 11,
@@ -11,6 +12,8 @@ export const migrationV11 = {
 export function ensureMovementDeleteColumns(db: Database.Database): void {
   try {
     const cols = db.prepare(`PRAGMA table_info(inventory_movements)`).all() as Array<{ name: string }>;
+    if (cols.length === 0) return;
+
     const colNames = new Set(cols.map((c) => c.name));
 
     if (!colNames.has('deleted_at')) {
@@ -19,7 +22,7 @@ export function ensureMovementDeleteColumns(db: Database.Database): void {
     if (!colNames.has('updated_at')) {
       db.exec(`ALTER TABLE inventory_movements ADD COLUMN updated_at DATETIME NULL`);
     }
-  } catch {
-    // Ignore if table doesn't exist yet
+  } catch (err) {
+    logger.error('MigrationV11', 'Failed ensuring movement soft-delete columns', err);
   }
 }

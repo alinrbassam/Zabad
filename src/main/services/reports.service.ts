@@ -33,7 +33,9 @@ export class ReportsService {
         COALESCE(SUM(tax_total), 0) as taxCollected,
         COALESCE(AVG(grand_total), 0) as averageSale
       FROM sales_orders
-      WHERE payment_status = 'Paid' AND date(created_at) BETWEEN ? AND ?
+      WHERE (deleted_at IS NULL OR deleted_at = '')
+        AND payment_status = 'Paid'
+        AND date(created_at) BETWEEN ? AND ?
     `);
     const salesRes = salesStmt.get(startDate, endDate) as {
       totalTransactions: number;
@@ -48,15 +50,19 @@ export class ReportsService {
       SELECT COALESCE(SUM(i.quantity * i.cost_price), 0) as cogs
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE s.payment_status = 'Paid' AND date(s.created_at) BETWEEN ? AND ?
+      WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+        AND s.payment_status = 'Paid'
+        AND date(s.created_at) BETWEEN ? AND ?
     `);
     const cogsRes = cogsStmt.get(startDate, endDate) as { cogs: number };
     const cogs = cogsRes.cogs || 0;
 
     const refundStmt = this.db.prepare(`
-      SELECT COALESCE(SUM(refund_amount), 0) as totalRefunds
-      FROM sales_refunds
-      WHERE date(created_at) BETWEEN ? AND ?
+      SELECT COALESCE(SUM(r.refund_amount), 0) as totalRefunds
+      FROM sales_refunds r
+      JOIN sales_orders s ON r.sale_id = s.id
+      WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+        AND date(r.created_at) BETWEEN ? AND ?
     `);
     const refundRes = refundStmt.get(startDate, endDate) as { totalRefunds: number };
 
@@ -78,7 +84,9 @@ export class ReportsService {
       FROM sales_order_items i
       JOIN products p ON i.product_id = p.id
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE s.payment_status = 'Paid' AND date(s.created_at) BETWEEN ? AND ?
+      WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+        AND s.payment_status = 'Paid'
+        AND date(s.created_at) BETWEEN ? AND ?
       GROUP BY p.id
       ORDER BY totalAmount DESC
       LIMIT 5
@@ -117,7 +125,8 @@ export class ReportsService {
         id, invoice_number, subtotal, item_discount, order_discount,
         tax_total, grand_total, payment_method, payment_status, created_at
       FROM sales_orders
-      WHERE date(created_at) BETWEEN ? AND ?
+      WHERE (deleted_at IS NULL OR deleted_at = '')
+        AND date(created_at) BETWEEN ? AND ?
     `;
     const params: string[] = [startDate, endDate];
 
@@ -152,7 +161,9 @@ export class ReportsService {
       FROM sales_order_items i
       JOIN products p ON i.product_id = p.id
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE s.payment_status = 'Paid' AND date(s.created_at) BETWEEN ? AND ?
+      WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+        AND s.payment_status = 'Paid'
+        AND date(s.created_at) BETWEEN ? AND ?
       GROUP BY p.id
       ORDER BY total_sold_qty DESC
       LIMIT 100
@@ -197,7 +208,9 @@ export class ReportsService {
         COALESCE(SUM(tax_total), 0) as totalTax,
         COALESCE(SUM(item_discount + order_discount), 0) as totalDiscounts
       FROM sales_orders
-      WHERE payment_status = 'Paid' AND date(created_at) BETWEEN ? AND ?
+      WHERE (deleted_at IS NULL OR deleted_at = '')
+        AND payment_status = 'Paid'
+        AND date(created_at) BETWEEN ? AND ?
     `);
     const salesRes = salesStmt.get(startDate, endDate) as {
       totalRevenue: number;
@@ -209,7 +222,9 @@ export class ReportsService {
       SELECT COALESCE(SUM(i.quantity * i.cost_price), 0) as cogs
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
-      WHERE s.payment_status = 'Paid' AND date(s.created_at) BETWEEN ? AND ?
+      WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
+        AND s.payment_status = 'Paid'
+        AND date(s.created_at) BETWEEN ? AND ?
     `);
     const cogsRes = cogsStmt.get(startDate, endDate) as { cogs: number };
     const cogs = cogsRes.cogs || 0;

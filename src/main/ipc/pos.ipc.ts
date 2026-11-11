@@ -134,6 +134,42 @@ export function registerPOSIpcHandlers(db: Database.Database): void {
   );
 
   ipcMain.handle(
+    IPC_CHANNELS.POS_SALE_DELETE,
+    async (_, id: string, userId?: string): Promise<ApiResponse> => {
+      try {
+        posSalesService.deleteSale(id, userId);
+        cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after sale delete failed', err));
+        SupabaseSyncService.triggerDebouncedSync(1000);
+        return { success: true };
+      } catch (err) {
+        logger.error('POSIPC', 'Delete sale failed', err);
+        return {
+          success: false,
+          error: { code: 'POS_SALE_DELETE_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.POS_SALES_RESET,
+    async (_, userId?: string): Promise<ApiResponse<{ clearedCount: number }>> => {
+      try {
+        const res = posSalesService.resetSalesHistory(userId);
+        cloudSync.sync().catch((err) => logger.warn('CloudSync', 'Auto-sync after sales reset failed', err));
+        SupabaseSyncService.triggerDebouncedSync(1000);
+        return { success: true, data: res };
+      } catch (err) {
+        logger.error('POSIPC', 'Reset sales history failed', err);
+        return {
+          success: false,
+          error: { code: 'POS_SALES_RESET_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
     IPC_CHANNELS.POS_DEBTS_LIST,
     async (_, query?: string): Promise<ApiResponse> => {
       try {

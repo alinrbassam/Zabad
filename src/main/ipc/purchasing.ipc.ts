@@ -66,15 +66,35 @@ export function registerPurchasingIpcHandlers(db: Database.Database): void {
 
   ipcMain.handle(
     IPC_CHANNELS.PURCHASE_ORDERS_UPDATE_STATUS,
-    async (_, payload: { id: string; toStatus: POStatus; notes?: string }): Promise<ApiResponse> => {
+    async (
+      _,
+      payload: { id: string; toStatus: POStatus; notes?: string; userId?: string },
+    ): Promise<ApiResponse> => {
       try {
-        poService.updateStatus(payload.id, payload.toStatus, undefined, payload.notes);
+        poService.updateStatus(payload.id, payload.toStatus, payload.userId, payload.notes);
         SupabaseSyncService.triggerDebouncedSync(1000);
         return { success: true };
       } catch (err) {
         return {
           success: false,
           error: { code: 'PO_STATUS_ERROR', message: (err as Error).message },
+        };
+      }
+    },
+  );
+
+  ipcMain.handle(
+    IPC_CHANNELS.PURCHASE_ORDERS_DELETE,
+    async (_, id: string, userId?: string): Promise<ApiResponse> => {
+      try {
+        poService.deletePurchaseOrder(id, userId);
+        SupabaseSyncService.triggerDebouncedSync(1000);
+        return { success: true };
+      } catch (err) {
+        logger.error('PurchasingIPC', 'Failed deleting PO', err);
+        return {
+          success: false,
+          error: { code: 'PO_DELETE_ERROR', message: (err as Error).message },
         };
       }
     },
