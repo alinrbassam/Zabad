@@ -28,15 +28,15 @@ export class POSRefundService {
     if (!sale) throw new Error('Sales order not found');
 
     if (sale.payment_status === 'Refunded') {
-      throw new Error('This invoice has already been refunded');
+      throw new Error('This invoice has already been fully refunded');
     }
 
     const refundId = crypto.randomUUID();
     const refundNumber = this.numberingService.generateNextNumber('inv');
     const now = new Date().toISOString();
 
-    // Fetch the real sale items stored in sales_order_items
-    let dbSaleItems: Array<{
+    // Fetch the real sale items stored in sales_order_items along with any previous returns
+    type DbSaleItemRow = {
       id: string;
       product_id: string;
       batch_id?: string | null;
@@ -44,12 +44,29 @@ export class POSRefundService {
       quantity: number;
       unit_price: number;
       line_total: number;
-    }> = [];
+      previously_refunded_qty?: number;
+    };
+
+    let dbSaleItems: DbSaleItemRow[] = [];
 
     try {
-      dbSaleItems = (this.db.prepare('SELECT * FROM sales_order_items WHERE sale_id = ?').all(input.saleId) || []) as any[];
+      dbSaleItems = (this.db.prepare(`
+        SELECT soi.*,
+               COALESCE((
+                 SELECT SUM(sri.returned_qty)
+                 FROM sales_refund_items sri
+                 JOIN sales_refunds sr ON sri.refund_id = sr.id
+                 WHERE (sri.sale_item_id = soi.id OR (sri.sale_item_id = '' AND sri.product_id = soi.product_id AND sr.sale_id = soi.sale_id))
+               ), 0) AS previously_refunded_qty
+        FROM sales_order_items soi
+        WHERE soi.sale_id = ?
+      `).all(input.saleId) || []) as DbSaleItemRow[];
     } catch {
-      dbSaleItems = [];
+      try {
+        dbSaleItems = (this.db.prepare('SELECT * FROM sales_order_items WHERE sale_id = ?').all(input.saleId) || []) as DbSaleItemRow[];
+      } catch {
+        dbSaleItems = [];
+      }
     }
 
     // Prepare list of items to refund
@@ -73,27 +90,49 @@ export class POSRefundService {
           .filter((it) => it.productId)
           .map((it) => {
             const match = dbSaleItems.find(
-              (dbi) => dbi.product_id === it.productId || dbi.id === it.saleItemId
+              (dbi) => dbi.id === it.saleItemId || dbi.product_id === it.productId
             );
+            const prevRefunded = match?.previously_refunded_qty || 0;
+            const maxRefundable = match ? Math.max(0, match.quantity - prevRefunded) : 999999;
+            const requestedQty = Math.abs(it.returnedQty || 1);
+            const returnedQty = Math.min(requestedQty, maxRefundable > 0 ? maxRefundable : requestedQty);
+
+            const effectiveUnitPrice = match && match.quantity > 0
+              ? (match.line_total / match.quantity)
+              : (match?.unit_price || 0);
+
+            const refundAmount = it.refundAmount !== undefined
+              ? it.refundAmount
+              : Math.round(effectiveUnitPrice * returnedQty * 100) / 100;
+
             return {
               saleItemId: it.saleItemId || match?.id,
               productId: match ? match.product_id : it.productId!,
               batchId: it.batchId || match?.batch_id || null,
               unitId: match?.unit_id || 'default-unit',
-              returnedQty: Math.abs(it.returnedQty || 1),
-              refundAmount: it.refundAmount !== undefined ? it.refundAmount : (match?.line_total || 0),
+              returnedQty,
+              refundAmount,
             };
-          });
+          })
+          .filter((it) => it.returnedQty > 0);
       } else if (dbSaleItems.length > 0) {
         // Input had placeholder mock items (e.g. 'p-1'); use actual items from the sale!
-        refundItemsToProcess = dbSaleItems.map((dbi) => ({
-          saleItemId: dbi.id,
-          productId: dbi.product_id,
-          batchId: dbi.batch_id || null,
-          unitId: dbi.unit_id,
-          returnedQty: Math.abs(dbi.quantity),
-          refundAmount: dbi.line_total,
-        }));
+        refundItemsToProcess = dbSaleItems
+          .map((dbi) => {
+            const prevRefunded = dbi.previously_refunded_qty || 0;
+            const maxRefundable = Math.max(0, dbi.quantity - prevRefunded);
+            const returnedQty = maxRefundable;
+            const effectiveUnitPrice = dbi.quantity > 0 ? (dbi.line_total / dbi.quantity) : dbi.unit_price;
+            return {
+              saleItemId: dbi.id,
+              productId: dbi.product_id,
+              batchId: dbi.batch_id || null,
+              unitId: dbi.unit_id,
+              returnedQty,
+              refundAmount: Math.round(effectiveUnitPrice * returnedQty * 100) / 100,
+            };
+          })
+          .filter((it) => it.returnedQty > 0);
       } else {
         // No items in DB (e.g. in unit tests), use input items
         refundItemsToProcess = input.items.map((it) => ({
@@ -106,22 +145,34 @@ export class POSRefundService {
         }));
       }
     } else if (dbSaleItems.length > 0) {
-      // Full sale refund: refund every item in the sale
-      refundItemsToProcess = dbSaleItems.map((dbi) => ({
-        saleItemId: dbi.id,
-        productId: dbi.product_id,
-        batchId: dbi.batch_id || null,
-        unitId: dbi.unit_id,
-        returnedQty: Math.abs(dbi.quantity),
-        refundAmount: dbi.line_total,
-      }));
+      // Full remaining items refund: refund every item's remaining refundable quantity
+      refundItemsToProcess = dbSaleItems
+        .map((dbi) => {
+          const prevRefunded = dbi.previously_refunded_qty || 0;
+          const remainingQty = Math.max(0, dbi.quantity - prevRefunded);
+          const effectiveUnitPrice = dbi.quantity > 0 ? (dbi.line_total / dbi.quantity) : dbi.unit_price;
+          return {
+            saleItemId: dbi.id,
+            productId: dbi.product_id,
+            batchId: dbi.batch_id || null,
+            unitId: dbi.unit_id,
+            returnedQty: remainingQty,
+            refundAmount: Math.round(effectiveUnitPrice * remainingQty * 100) / 100,
+          };
+        })
+        .filter((it) => it.returnedQty > 0);
+    }
+
+    if (refundItemsToProcess.length === 0 && dbSaleItems.length > 0) {
+      throw new Error('All items in this invoice have already been refunded');
     }
 
     let totalRefund = 0;
     refundItemsToProcess.forEach((item) => {
       totalRefund += item.refundAmount;
     });
-    if (totalRefund === 0 && sale.grand_total) {
+    totalRefund = Math.round(totalRefund * 100) / 100;
+    if (totalRefund === 0 && sale.grand_total && dbSaleItems.length === 0) {
       totalRefund = sale.grand_total;
     }
 
@@ -136,7 +187,7 @@ export class POSRefundService {
     `);
 
     const updateSaleStatus = this.db.prepare(`
-      UPDATE sales_orders SET payment_status = 'Refunded', updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      UPDATE sales_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
     `);
 
     this.db.transaction(() => {
@@ -170,7 +221,7 @@ export class POSRefundService {
               batchId: item.batchId || undefined,
               movementType: 'Customer sale refund',
               quantityChange: Math.abs(item.returnedQty),
-              unitCost: item.refundAmount / (item.returnedQty || 1),
+              unitCost: item.returnedQty > 0 ? (item.refundAmount / item.returnedQty) : 0,
               reason: `POS Refund Receipt #${refundNumber} for Sale #${sale.invoice_number}`,
             },
             userId,
@@ -183,8 +234,21 @@ export class POSRefundService {
         }
       }
 
-      // Mark the invoice as Refunded
-      updateSaleStatus.run(input.saleId);
+      // Check whether the order is fully refunded or partially refunded
+      let isFullyRefunded = true;
+      if (dbSaleItems.length > 0) {
+        const totalSold = dbSaleItems.reduce((acc, it) => acc + it.quantity, 0);
+        const totalPreviouslyRefunded = dbSaleItems.reduce((acc, it) => acc + (it.previously_refunded_qty || 0), 0);
+        const currentReturnedTotal = refundItemsToProcess.reduce((acc, it) => acc + it.returnedQty, 0);
+        const totalRefundedAllTime = totalPreviouslyRefunded + currentReturnedTotal;
+
+        if (totalRefundedAllTime < totalSold - 0.001) {
+          isFullyRefunded = false;
+        }
+      }
+
+      const newStatus = isFullyRefunded ? 'Refunded' : 'Partially refunded';
+      updateSaleStatus.run(newStatus, input.saleId);
     })();
 
     this.auditRepo.logAction({

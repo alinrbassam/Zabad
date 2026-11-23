@@ -34,7 +34,7 @@ export class ReportsService {
         COALESCE(AVG(grand_total), 0) as averageSale
       FROM sales_orders
       WHERE (deleted_at IS NULL OR deleted_at = '')
-        AND payment_status = 'Paid'
+        AND payment_status IN ('Paid', 'Partially refunded')
         AND date(created_at) BETWEEN ? AND ?
     `);
     const salesRes = salesStmt.get(startDate, endDate) as {
@@ -51,7 +51,7 @@ export class ReportsService {
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
       WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
-        AND s.payment_status = 'Paid'
+        AND s.payment_status IN ('Paid', 'Partially refunded')
         AND date(s.created_at) BETWEEN ? AND ?
     `);
     const cogsRes = cogsStmt.get(startDate, endDate) as { cogs: number };
@@ -85,7 +85,7 @@ export class ReportsService {
       JOIN products p ON i.product_id = p.id
       JOIN sales_orders s ON i.sale_id = s.id
       WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
-        AND s.payment_status = 'Paid'
+        AND s.payment_status IN ('Paid', 'Partially refunded')
         AND date(s.created_at) BETWEEN ? AND ?
       GROUP BY p.id
       ORDER BY totalAmount DESC
@@ -162,7 +162,7 @@ export class ReportsService {
       JOIN products p ON i.product_id = p.id
       JOIN sales_orders s ON i.sale_id = s.id
       WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
-        AND s.payment_status = 'Paid'
+        AND s.payment_status IN ('Paid', 'Partially refunded')
         AND date(s.created_at) BETWEEN ? AND ?
       GROUP BY p.id
       ORDER BY total_sold_qty DESC
@@ -209,7 +209,7 @@ export class ReportsService {
         COALESCE(SUM(item_discount + order_discount), 0) as totalDiscounts
       FROM sales_orders
       WHERE (deleted_at IS NULL OR deleted_at = '')
-        AND payment_status = 'Paid'
+        AND payment_status IN ('Paid', 'Partially refunded')
         AND date(created_at) BETWEEN ? AND ?
     `);
     const salesRes = salesStmt.get(startDate, endDate) as {
@@ -223,7 +223,7 @@ export class ReportsService {
       FROM sales_order_items i
       JOIN sales_orders s ON i.sale_id = s.id
       WHERE (s.deleted_at IS NULL OR s.deleted_at = '')
-        AND s.payment_status = 'Paid'
+        AND s.payment_status IN ('Paid', 'Partially refunded')
         AND date(s.created_at) BETWEEN ? AND ?
     `);
     const cogsRes = cogsStmt.get(startDate, endDate) as { cogs: number };

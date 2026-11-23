@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { POSCheckoutInput } from '../../shared/validation';
-import { SalesOrderEntity } from '../../shared/types';
+import { SalesOrderEntity, SalesOrderItemEntity } from '../../shared/types';
 import { InventoryService } from './inventory.service';
 import { PurchaseNumberingService } from './purchase-numbering.service';
 import { ProductRepository } from '../database/repositories/product.repository';
@@ -264,7 +264,7 @@ export class POSSalesService {
     });
     logger.info('POSSalesService', `Completed Sale #${invoiceNumber}`);
     const found = this.getSaleById(saleId);
-    if (found) return found as any;
+    if (found) return found;
     return {
       id: saleId,
       invoice_number: invoiceNumber,
@@ -285,7 +285,7 @@ export class POSSalesService {
       shift_id: input.shiftId,
       cashier_id: cashierId,
       created_at: now,
-    } as any;
+    };
   }
 
   public getSalesHistory(query = ''): SalesOrderEntity[] {
@@ -303,24 +303,30 @@ export class POSSalesService {
 
   public getSaleById(
     id: string,
-  ): (SalesOrderEntity & { items: any[] }) | undefined {
+  ): (SalesOrderEntity & { items: SalesOrderItemEntity[] }) | undefined {
     return this.runWithSalesSchemaRepair(() => {
       const sale = this.db
         .prepare("SELECT * FROM sales_orders WHERE id = ? AND (deleted_at IS NULL OR deleted_at = '')")
         .get(id) as SalesOrderEntity | undefined;
       if (!sale) return undefined;
 
-      const items = this.db
+      const items = (this.db
         .prepare(`
           SELECT soi.*, p.name_en, p.name_ar,
                  p.piece_weight as product_piece_weight, p.pieces_per_pack as product_pieces_per_pack,
-                 u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol
+                 u.name_ar as unit_name_ar, u.name_en as unit_name_en, u.symbol as unit_symbol,
+                 COALESCE((
+                   SELECT SUM(sri.returned_qty)
+                   FROM sales_refund_items sri
+                   JOIN sales_refunds sr ON sri.refund_id = sr.id
+                   WHERE (sri.sale_item_id = soi.id OR (sri.sale_item_id = '' AND sri.product_id = soi.product_id AND sr.sale_id = soi.sale_id))
+                 ), 0) as previously_refunded_qty
           FROM sales_order_items soi
           LEFT JOIN products p ON soi.product_id = p.id
           LEFT JOIN units u ON soi.unit_id = u.id
           WHERE soi.sale_id = ?
         `)
-        .all(id);
+        .all(id) || []) as SalesOrderItemEntity[];
       return { ...sale, items };
     });
   }
@@ -380,7 +386,9 @@ export class POSSalesService {
       details: `Settled debt of ${amount} for invoice ${sale.invoice_number} (New Status: ${newStatus})`,
     });
 
-    return this.getSaleById(saleId) as any;
+    const updated = this.getSaleById(saleId);
+    if (!updated) throw new Error('Failed to retrieve updated sale');
+    return updated;
   }
 
   public deleteSale(id: string, userId?: string): void {

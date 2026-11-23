@@ -12,6 +12,7 @@ import { AdminPasswordConfirmModal } from '@components/auth/AdminPasswordConfirm
 import { SalesOrderEntity } from '@shared/types';
 import { ThermalReceiptModal } from './ThermalReceiptModal';
 import { DailyClosingReportModal } from './DailyClosingReportModal';
+import { RefundModal } from './RefundModal';
 import { History, Printer, Undo2, FileText, Trash2, RotateCcw } from 'lucide-react';
 import { formatDateTime } from '@utils/date';
 import { formatCurrency } from '../../renderer/utils/currency';
@@ -31,6 +32,7 @@ export const SalesHistoryPage: React.FC = () => {
   const { language } = useLanguageStore();
   const [search, setSearch] = useState('');
   const [activeReceiptSale, setActiveReceiptSale] = useState<SalesOrderEntity | null>(null);
+  const [saleToRefund, setSaleToRefund] = useState<SalesOrderEntity | null>(null);
   const [showClosingReportModal, setShowClosingReportModal] = useState(false);
   const [saleToDelete, setSaleToDelete] = useState<SalesOrderEntity | null>(null);
   const [isDeletingSale, setIsDeletingSale] = useState(false);
@@ -47,46 +49,8 @@ export const SalesHistoryPage: React.FC = () => {
     setActiveReceiptSale(sale);
   };
 
-  const handleRefund = async (sale: SalesOrderEntity) => {
-    const confirmed = window.confirm(
-      language === 'ar'
-        ? `هل تريد تأكيد استرجاع الفاتورة رقم ${sale.invoice_number}؟\nسيتم وضع علامة "مسترجع" على الفاتورة وإعادة كافة الأصناف إلى المخزون.`
-        : language === 'fr'
-        ? `Confirmer le remboursement de la facture ${sale.invoice_number} ?\nLe statut passera à "Remboursé" et les articles seront réintégrés en stock.`
-        : `Process refund for ${sale.invoice_number}?\nThe invoice will be marked as "Refunded" and all items returned to stock.`
-    );
-    if (!confirmed) return;
-
-    const ok = await processRefund(
-      {
-        saleId: sale.id,
-        reason: 'Customer Return',
-        refundMethod: sale.payment_method || 'Cash',
-        items: [],
-      },
-      user?.id,
-    );
-
-    if (ok) {
-      await loadSalesHistory(search);
-      alert(
-        language === 'ar'
-          ? `تم استرجاع الفاتورة ${sale.invoice_number} بنجاح وإعادة المنتجات إلى المخزون.`
-          : language === 'fr'
-          ? `Facture ${sale.invoice_number} remboursée avec succès. Les articles ont été réintégrés au stock.`
-          : `Refund processed successfully for ${sale.invoice_number}. Items have been returned to stock.`
-      );
-    } else {
-      const storeErr = usePOSStore.getState().error;
-      const detail = storeErr ? ` (${storeErr})` : '';
-      alert(
-        language === 'ar'
-          ? `تعذر معالجة الاسترجاع${detail}.`
-          : language === 'fr'
-          ? `Échec du traitement du remboursement${detail}.`
-          : `Failed to process refund${detail}.`
-      );
-    }
+  const handleRefund = (sale: SalesOrderEntity) => {
+    setSaleToRefund(sale);
   };
 
   const columns: Column<SalesOrderEntity>[] = [
@@ -137,6 +101,9 @@ export const SalesHistoryPage: React.FC = () => {
         if (s.payment_status === 'Refunded' || s.payment_status === 'Voided') {
           variant = 'danger';
           label = language === 'ar' ? 'مسترجع' : language === 'fr' ? 'Remboursé' : 'Refunded';
+        } else if (s.payment_status === 'Partially refunded') {
+          variant = 'warning';
+          label = language === 'ar' ? 'مسترجع جزئياً' : language === 'fr' ? 'Partiellement remboursé' : 'Partially refunded';
         } else if (s.payment_status === 'Paid') {
           variant = 'success';
           label = language === 'ar' ? 'مدفوع' : language === 'fr' ? 'Payé' : 'Paid';
@@ -160,13 +127,19 @@ export const SalesHistoryPage: React.FC = () => {
             Receipt
           </Button>
 
-          {s.payment_status === 'Paid' && (
+          {(s.payment_status === 'Paid' || s.payment_status === 'Partially refunded') && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleRefund(s)}
               className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 border-rose-200"
-              title={language === 'ar' ? 'استرجاع الفاتورة' : language === 'fr' ? 'Rembourser' : 'Refund'}
+              title={
+                language === 'ar'
+                  ? 'استرجاع الفاتورة أو أصناف محددة'
+                  : language === 'fr'
+                  ? 'Rembourser la facture ou des articles'
+                  : 'Refund invoice or specific items'
+              }
             >
               <Undo2 className="h-3 w-3 mr-1" />
               {language === 'ar' ? 'استرجاع' : language === 'fr' ? 'Rembourser' : 'Refund'}
@@ -259,6 +232,27 @@ export const SalesHistoryPage: React.FC = () => {
         isOpen={Boolean(activeReceiptSale)}
         onClose={() => setActiveReceiptSale(null)}
         sale={selectedSale || activeReceiptSale}
+      />
+
+      <RefundModal
+        isOpen={Boolean(saleToRefund)}
+        onClose={() => setSaleToRefund(null)}
+        sale={saleToRefund}
+        onConfirmRefund={async (payload) => {
+          const ok = await processRefund(payload, user?.id);
+          if (ok) {
+            await loadSalesHistory(search);
+            setFeedbackMsg(
+              language === 'ar'
+                ? `تمت معالجة الاسترجاع للفاتورة ${saleToRefund?.invoice_number} بنجاح وإعادة الأصناف إلى المخزون.`
+                : language === 'fr'
+                ? `Remboursement traité avec succès pour la facture ${saleToRefund?.invoice_number}.`
+                : `Refund processed successfully for ${saleToRefund?.invoice_number}. Items have been returned to stock.`,
+            );
+            return true;
+          }
+          return false;
+        }}
       />
 
       <DailyClosingReportModal

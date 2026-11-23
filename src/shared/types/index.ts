@@ -444,6 +444,12 @@ export interface SalesOrderItemEntity {
   pieces_per_pack?: number;
   unit_weight?: number;
   total_weight?: number;
+  name_en?: string;
+  name_ar?: string;
+  previously_refunded_qty?: number;
+  unit_name_ar?: string;
+  unit_name_en?: string;
+  unit_symbol?: string;
 }
 
 export interface SalesPaymentEntity {
